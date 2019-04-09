@@ -1,5 +1,4 @@
-# 坑爹的楼主没改pytorch的代码，别的代码也有问题，很多都不符合规范。还有很多字符问题。.gitignore 也没加还上传些垃圾文件，能不能有点工程素养。
-
+# 基于chinese-ocr-python-3.6修改，请切换到dev分支
 # 本文基于tensorflow、keras/pytorch实现对自然场景的文字检测及端到端的OCR中文文字识别
 
 # 实现功能
@@ -7,11 +6,12 @@
 - [x]  文字方向检测 0、90、180、270度检测 
 - [x] 文字检测 后期将切换到keras版本文本检测 实现keras端到端的文本检测及识别
 - [x] 不定长OCR识别 
+- [x] 视频输入及检测文字切图输出
 
 ## 环境部署
 ``` Bash
 ##GPU环境
-sh setup.sh
+source setup.sh
 ##CPU环境
 sh setup-cpu.sh
 如需使用python3.6 git checkout chinese-ocr-python-3.6
