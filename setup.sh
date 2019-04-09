@@ -9,7 +9,7 @@ pip install matplotlib -i https://pypi.tuna.tsinghua.edu.cn/simple/
 pip install -U pillow -i https://pypi.tuna.tsinghua.edu.cn/simple/
 pip install  h5py lmdb mahotas -i https://pypi.tuna.tsinghua.edu.cn/simple/
 #conda install pytorch=1.0.1 torchvision -c https://mirrors.tuna.tsinghua.edu.cn/anaconda/cloud/pytorch/linux-64/   Could not create cudnn handle: CUDNN_STATUS_INTERNAL_ERROR
-pip install https://download.pytorch.org/whl/cpu/torch-1.0.1.post2-cp35-cp35m-linux_x86_64.whl
+pip install https://download.pytorch.org/whl/cpu/torch-1.0.1.post2-cp36-cp36m-linux_x86_64.whl
 pip install torchvision
 conda install tensorflow=1.10 tensorflow-gpu=1.10
 pip install keras==2.0.8  -i https://pypi.tuna.tsinghua.edu.cn/simple/ ##解决cuda报错相关问题
