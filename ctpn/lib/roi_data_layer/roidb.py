@@ -2,7 +2,7 @@ import numpy as np
 import PIL
 from ..fast_rcnn.config import cfg
 from ..fast_rcnn.bbox_transform import bbox_transform
-from lib.utils.bbox import bbox_overlaps
+from ..utils.bbox import bbox_overlaps
 
 def prepare_roidb(imdb):
     """Enrich the imdb's roidb by adding some derived quantities that
