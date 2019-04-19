@@ -15,6 +15,8 @@ import numpy as np
 import cv2
 from PIL import Image
 from crnn_preprocessing import preprocessing
+from ctpn.ctpn.cfg import Config
+from ctpn.ctpn.other import resize_im
 
 
 def crnnRec(im, text_recs, ocrMode='keras', adjust=False):
@@ -100,20 +102,23 @@ def model(img, imgNo, videoName, outputPath, model='keras', adjust=False, detect
             im = im.transpose(Image.ROTATE_270)
         img = np.array(im)
 
-    # real_height=img.shape[0]
-    # real_weight=img.shape[1]
-    
-    text_recs, tmp, img = text_detect(img)
-    # real_recs=toRealCoordinate(real_height,real_weight,img.shape[0],img.shape[1],text_recs)
-    text_recs = subtitle_filter(text_recs, img.shape[0], img.shape[1])      #输入的参数text_recs为放大后的，因此高度宽度需要重新测量
+    real_img = img.copy()
 
+    text_recs, tmp, img, f = text_detect(img)
+    # 字幕过滤
+    text_recs = subtitle_filter(text_recs, img.shape[0], img.shape[1])
+    # text_recs = subtitle_filter(text_recs, img.shape[0], img.shape[1])
     if text_recs is None:
         return [], tmp, angle
 
-    if is_crop:
-        crop_img(img, videoName, outputPath, text_recs, imgNo)
+    # 获取原图坐标便于预处理
+    real_recs = toRealCoordinate(text_recs, f)
 
-    preprocessing.p_picture(text_recs, img)
+    if is_crop:
+        crop_img(real_img, videoName, outputPath, real_recs, imgNo)
+
+    preprocessed_img = preprocessing.p_picture(real_recs, real_img, videoName, outputPath, imgNo)
+    img, f = resize_im(preprocessed_img, scale=Config.SCALE, max_scale=Config.MAX_SCALE)
 
     result = crnnRec(img, text_recs, model, adjust=adjust)
     return result, tmp, angle
@@ -136,8 +141,7 @@ def sort_box(box):
     return box
 
 
-def subtitle_filter(boxes, resize_height, resize_weight):
-
+def subtitle_filter(boxes, img_height, img_weight):
     # roi限制
     roi_y_per = 0.7
     # 宽度限制
@@ -145,23 +149,20 @@ def subtitle_filter(boxes, resize_height, resize_weight):
     # 高度限制
     pass
 
-    temp=[]
+    temp = []
     for index, box in enumerate(boxes):
-        if box[1] < resize_height * roi_y_per:
+        if box[1] < img_height * roi_y_per:
             temp.append(index)
 
-    boxes=np.delete(boxes, temp, axis=0)
+    boxes = np.delete(boxes, temp, axis=0)
     return sort_box(boxes)
 
 
-def toRealCoordinate(real_height,real_weight,resize_height,resize_weight,text_recs):
-    f1=real_weight/resize_weight
-    f2=real_height/resize_height
-
+def toRealCoordinate(text_recs, f):
     tmp = np.zeros((len(text_recs), 8), np.int)
 
     for index1, text_rec in enumerate(text_recs):
         for index2, point in enumerate(text_rec):
-            tmp[index1,index2]= point*f2
+            tmp[index1, index2] = point / f
 
     return tmp

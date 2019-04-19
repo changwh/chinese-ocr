@@ -43,5 +43,5 @@ if __name__ == '__main__':
     #     print(result[key][1])
     #
 
-    start(["/home/user/PycharmProjects/text-detection-ctpn/data/video/77374694-1-64.flv"],
+    start(["/home/user/PycharmProjects/text-detection-ctpn/data/video/77374694-1-64.flv", "/home/user/PycharmProjects/text-detection-ctpn/data/video/0.flv"],
           "/home/user/test_results")

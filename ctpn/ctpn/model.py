@@ -31,4 +31,4 @@ def ctpn(img):
     scale, max_scale = Config.SCALE, Config.MAX_SCALE
     img, f = resize_im(img, scale=scale, max_scale=max_scale)
     scores, boxes = test_ctpn(sess, net, img)
-    return scores, boxes, img
+    return scores, boxes, img, f

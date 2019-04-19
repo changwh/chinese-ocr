@@ -3,10 +3,11 @@ import numpy as np
 import cv2 as cv
 import sys
 import os
-import natsort
+# import natsort
+
 np.set_printoptions(threshold=sys.maxsize)
 # np.set_printoptions(threshold=np.nan)
-from matplotlib import pyplot as plt
+# from matplotlib import pyplot as plt
 
 
 def dilate_demo(img):
@@ -18,7 +19,7 @@ def dilate_demo(img):
     return dst
 
 
-def precess(thresh1, candy_img):
+def precess(thresh1, canny_img):
     row = thresh1.shape[0]
     col = thresh1.shape[1]
     # print(row, col)
@@ -27,13 +28,13 @@ def precess(thresh1, candy_img):
     while (i < row):
         j = 0
         while (j < col):
-            if (thresh1[i, j] == 255) and (candy_img[i, j, 0] == 255):
-                candy_img[i, j] = [255, 255, 255]
+            if (thresh1[i, j] == 255) and (canny_img[i, j, 0] == 255):
+                canny_img[i, j] = [255, 255, 255]
             else:
-                candy_img[i, j] = [0, 0, 0]
+                canny_img[i, j] = [0, 0, 0]
             j = j + 1
         i = i + 1
-    return candy_img
+    return canny_img
 
 
 def precess_2(img):
@@ -167,12 +168,13 @@ def convert(image):
     return image
 
 
-def main(left, top, right, bottom, img):
+def main(left, top, right, bottom, img, videoName, outputPath, frameNum, index):
     # left = 553
     # top = 615
     # right = 737
     # bottom = 673
     # picture_name = '2'
+    base_name = videoName.split('/')[-1]
 
     roi = img[top:bottom, left:right]
 
@@ -180,22 +182,31 @@ def main(left, top, right, bottom, img):
     gray_image = cv.cvtColor(roi, cv.COLOR_BGR2GRAY)
 
     # 边缘检测得到边缘图片
-    candy_img = cv.Canny(roi, 40, 120)
-    # cv.imshow('candy 1', candy_img)
+    canny_img = cv.Canny(roi, 40, 120)
+    # cv.imshow('canny 1', canny_img)
+    cv.imwrite(os.path.join(outputPath, "cropped_pic_{}_{}".format(base_name.split('.')[0], frameNum),
+                            "1_canny_{}_{}_{}.jpg".format(base_name.split('.')[0], frameNum, index)), canny_img)
+
     # 阈值处理
-    ret, thresh1 = cv.threshold(gray_image, 230, 255, cv.THRESH_BINARY)
+    ret, thresh1 = cv.threshold(gray_image, 225, 255, cv.THRESH_BINARY)
     # cv.imshow('thresh1!', thresh1)
+    cv.imwrite(os.path.join(outputPath, "cropped_pic_{}_{}".format(base_name.split('.')[0], frameNum),
+                            "2_gray_{}_{}_{}.jpg".format(base_name.split('.')[0], frameNum, index)), thresh1)
 
     # 膨胀
     thresh2 = dilate_demo(thresh1)
     # cv.imshow('dilate_demo', thresh2)
+    cv.imwrite(os.path.join(outputPath, "cropped_pic_{}_{}".format(base_name.split('.')[0], frameNum),
+                            "3_dilate_{}_{}_{}.jpg".format(base_name.split('.')[0], frameNum, index)), thresh2)
 
-    candy_img = cv.cvtColor(candy_img, cv.COLOR_GRAY2BGR)
-    candy_img2 = precess(thresh2, candy_img)
-    # candy_img2 = precess_2(candy_img2)
-    # cv.imshow('candy 2', candy_img2)
+    canny_img = cv.cvtColor(canny_img, cv.COLOR_GRAY2BGR)
+    canny_img2 = precess(thresh2, canny_img)
+    # canny_img2 = precess_2(canny_img2)
+    # cv.imshow('canny 2', canny_img2)
+    cv.imwrite(os.path.join(outputPath, "cropped_pic_{}_{}".format(base_name.split('.')[0], frameNum),
+                            "4_canny2_{}_{}_{}.jpg".format(base_name.split('.')[0], frameNum, index)), canny_img2)
 
-    step1 = dilate_demo2(candy_img2)
+    step1 = dilate_demo2(canny_img2)
     step2 = erode_demo(step1)
 
     output = get_result(step2, roi)
@@ -203,17 +214,25 @@ def main(left, top, right, bottom, img):
 
     img[top:bottom, left:right] = output
 
-    # cv.imshow('final!!!!!', step2)
+    cv.imwrite(os.path.join(outputPath, "cropped_pic_{}_{}".format(base_name.split('.')[0], frameNum),
+                            "5_erode_{}_{}_{}.jpg".format(base_name.split('.')[0], frameNum, index)), step2)
+
+    # cv.imshow('final!!!!!', img)
     # if cv.waitKey(0) == ord('q'):
     #     pass
 
-def p_picture(text_recs, img):
+    cv.imwrite(os.path.join(outputPath, "final_{}_{}.jpg".format(base_name.split('.')[0], str(frameNum))), img)
+    return img
+
+
+def p_picture(text_recs, img, videoName, outputPath, frameNum):
     for index in range(len(text_recs)):
         left = text_recs[index][0]
         top = text_recs[index][1]
         right = text_recs[index][6]
         bottom = text_recs[index][7]
-        main(left, top, right, bottom, img)
+        img = main(left, top, right, bottom, img, videoName, outputPath, frameNum, index)
+    return img
 
 
 if __name__ == '__main__':
