@@ -105,9 +105,9 @@ def model(img, imgNo, videoName, outputPath, model='keras', adjust=False, detect
     real_img = img.copy()
 
     text_recs, tmp, img, f = text_detect(img)
+
     # 字幕过滤
     text_recs = subtitle_filter(text_recs, img.shape[0], img.shape[1])
-    # text_recs = subtitle_filter(text_recs, img.shape[0], img.shape[1])
     if text_recs is None:
         return [], tmp, angle
 
@@ -117,17 +117,18 @@ def model(img, imgNo, videoName, outputPath, model='keras', adjust=False, detect
     if is_crop:
         crop_img(real_img, videoName, outputPath, real_recs, imgNo)
 
-    preprocessed_img = preprocessing.p_picture(real_recs, real_img, videoName, outputPath, imgNo)
+    tmp = real_img.copy()
+    preprocessed_img = preprocessing.p_picture(real_recs, tmp, videoName, outputPath, imgNo)
     img, f = resize_im(preprocessed_img, scale=Config.SCALE, max_scale=Config.MAX_SCALE)
 
     result = crnnRec(img, text_recs, model, adjust=adjust)
-    return result, tmp, angle
+    return result, real_img, angle, real_recs, f
 
 
 def sort_box(box):
     """
     对box排序,及页面进行排版
-    text_recs[index, 0] = x1
+        text_recs[index, 0] = x1
         text_recs[index, 1] = y1
         text_recs[index, 2] = x2
         text_recs[index, 3] = y2
@@ -141,17 +142,21 @@ def sort_box(box):
     return box
 
 
-def subtitle_filter(boxes, img_height, img_weight):
+# 字幕过滤
+def subtitle_filter(boxes, img_height, img_width):
     # roi限制
     roi_y_per = 0.7
+    roi_x_per = 0.5
     # 宽度限制
     pass
     # 高度限制
+    height_filt_per = 0.061  # 0.05
     pass
 
     temp = []
     for index, box in enumerate(boxes):
-        if box[1] < img_height * roi_y_per:
+        # 将不满足限制条件的文字框加入到待删除列表中
+        if box[1] < img_height * roi_y_per or box[0] > img_width * roi_x_per or box[7] - box[1] < img_height * height_filt_per:
             temp.append(index)
 
     boxes = np.delete(boxes, temp, axis=0)

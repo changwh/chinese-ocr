@@ -3,9 +3,13 @@ import numpy as np
 import cv2 as cv
 import sys
 import os
+from . import clean_image
+
 # import natsort
 
 np.set_printoptions(threshold=sys.maxsize)
+
+
 # np.set_printoptions(threshold=np.nan)
 # from matplotlib import pyplot as plt
 
@@ -99,10 +103,9 @@ def clean_the_line(img, i, j, row, col):
 
 
 def dilate_demo2(img):
-    gray = cv.cvtColor(img, cv.COLOR_BGR2GRAY)
-    ret, thresh = cv.threshold(gray, 0, 255, cv.THRESH_BINARY | cv.THRESH_OTSU)
+    ret, thresh = cv.threshold(img, 0, 255, cv.THRESH_BINARY | cv.THRESH_OTSU)
     # cv.imshow('binary iamge', thresh)
-    kernel = cv.getStructuringElement(cv.MORPH_RECT, (6, 6))  # kernel(8, 8)
+    kernel = cv.getStructuringElement(cv.MORPH_RECT, (8, 8))  # kernel(8, 8)
     dst = cv.dilate(thresh, kernel)
     # cv.imwrite('pengzhang.png', dst)
     # cv.imshow('dilate image', dst)
@@ -201,10 +204,13 @@ def main(left, top, right, bottom, img, videoName, outputPath, frameNum, index):
 
     canny_img = cv.cvtColor(canny_img, cv.COLOR_GRAY2BGR)
     canny_img2 = precess(thresh2, canny_img)
+    canny_img2 = clean_image.wash_canny_picture(canny_img2)
+    ret, canny_img2 = cv.threshold(canny_img2, 5, 255, cv.THRESH_BINARY)
     # canny_img2 = precess_2(canny_img2)
     # cv.imshow('canny 2', canny_img2)
     cv.imwrite(os.path.join(outputPath, "cropped_pic_{}_{}".format(base_name.split('.')[0], frameNum),
                             "4_canny2_{}_{}_{}.jpg".format(base_name.split('.')[0], frameNum, index)), canny_img2)
+    # cv.imwrite(os.path.join(outputPath, "4_canny2_{}_{}_{}.jpg".format(base_name.split('.')[0], frameNum, index)), canny_img2)
 
     step1 = dilate_demo2(canny_img2)
     step2 = erode_demo(step1)
@@ -227,10 +233,10 @@ def main(left, top, right, bottom, img, videoName, outputPath, frameNum, index):
 
 def p_picture(text_recs, img, videoName, outputPath, frameNum):
     for index in range(len(text_recs)):
-        left = text_recs[index][0]
-        top = text_recs[index][1]
-        right = text_recs[index][6]
-        bottom = text_recs[index][7]
+        left = max(min(text_recs[index][0], text_recs[index][4]), 0)
+        top = min(text_recs[index][1], text_recs[index][3])
+        right = min(max(text_recs[index][2], text_recs[index][6]), img.shape[1])
+        bottom = max(text_recs[index][5], text_recs[index][7])
         img = main(left, top, right, bottom, img, videoName, outputPath, frameNum, index)
     return img
 
