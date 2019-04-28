@@ -1,5 +1,6 @@
 # coding:utf-8
 ##添加文本方向 检测模型，自动检测文字方向，0、90、180、270
+import os
 import sys
 
 sys.path.append('ctpn')
@@ -108,8 +109,8 @@ def model(img, imgNo, videoName, outputPath, model='keras', adjust=False, detect
 
     # 字幕过滤
     text_recs = subtitle_filter(text_recs, img.shape[0], img.shape[1])
-    if text_recs is None:
-        return [], tmp, angle
+    if text_recs is None or len(text_recs) == 0:
+        return [], real_img, angle, [], f
 
     # 获取原图坐标便于预处理
     real_recs = toRealCoordinate(text_recs, f)
@@ -118,11 +119,14 @@ def model(img, imgNo, videoName, outputPath, model='keras', adjust=False, detect
         crop_img(real_img, videoName, outputPath, real_recs, imgNo)
 
     tmp = real_img.copy()
-    preprocessed_img = preprocessing.p_picture(real_recs, tmp, videoName, outputPath, imgNo)
+    preprocessed_img, subtitle_height_list = preprocessing.p_picture(real_recs, tmp, videoName, outputPath, imgNo)
+    np.savetxt(
+        os.path.join(outputPath, "subtitle_height_{}_{}.txt".format(videoName.split('/')[-1].split('.')[0], imgNo)),
+        subtitle_height_list, fmt='%d')
     img, f = resize_im(preprocessed_img, scale=Config.SCALE, max_scale=Config.MAX_SCALE)
 
     result = crnnRec(img, text_recs, model, adjust=adjust)
-    return result, real_img, angle, real_recs, f
+    return result, tmp, angle, real_recs, f
 
 
 def sort_box(box):
@@ -156,7 +160,9 @@ def subtitle_filter(boxes, img_height, img_width):
     temp = []
     for index, box in enumerate(boxes):
         # 将不满足限制条件的文字框加入到待删除列表中
-        if box[1] < img_height * roi_y_per or box[0] > img_width * roi_x_per or box[7] - box[1] < img_height * height_filt_per:
+        if box[1] < img_height * roi_y_per or \
+                box[0] > img_width * roi_x_per or \
+                box[7] - box[1] < img_height * height_filt_per:
             temp.append(index)
 
     boxes = np.delete(boxes, temp, axis=0)

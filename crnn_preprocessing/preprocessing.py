@@ -204,13 +204,14 @@ def main(left, top, right, bottom, img, videoName, outputPath, frameNum, index):
 
     canny_img = cv.cvtColor(canny_img, cv.COLOR_GRAY2BGR)
     canny_img2 = precess(thresh2, canny_img)
-    canny_img2 = clean_image.wash_canny_picture(canny_img2)
-    ret, canny_img2 = cv.threshold(canny_img2, 5, 255, cv.THRESH_BINARY)
+    canny_img2, subtitle_height = clean_image.wash_canny_picture(canny_img2)
     # canny_img2 = precess_2(canny_img2)
     # cv.imshow('canny 2', canny_img2)
     cv.imwrite(os.path.join(outputPath, "cropped_pic_{}_{}".format(base_name.split('.')[0], frameNum),
                             "4_canny2_{}_{}_{}.jpg".format(base_name.split('.')[0], frameNum, index)), canny_img2)
     # cv.imwrite(os.path.join(outputPath, "4_canny2_{}_{}_{}.jpg".format(base_name.split('.')[0], frameNum, index)), canny_img2)
+    # np.savetxt(os.path.join(outputPath, "cropped_pic_{}_{}".format(base_name.split('.')[0], frameNum),
+    #                         "4_canny2_{}_{}_{}.txt".format(base_name.split('.')[0], frameNum, index)), canny_img2, fmt='%d')
 
     step1 = dilate_demo2(canny_img2)
     step2 = erode_demo(step1)
@@ -228,17 +229,19 @@ def main(left, top, right, bottom, img, videoName, outputPath, frameNum, index):
     #     pass
 
     cv.imwrite(os.path.join(outputPath, "final_{}_{}.jpg".format(base_name.split('.')[0], str(frameNum))), img)
-    return img
+    return img, subtitle_height
 
 
 def p_picture(text_recs, img, videoName, outputPath, frameNum):
+    subtitle_height_list = []
     for index in range(len(text_recs)):
         left = max(min(text_recs[index][0], text_recs[index][4]), 0)
         top = min(text_recs[index][1], text_recs[index][3])
         right = min(max(text_recs[index][2], text_recs[index][6]), img.shape[1])
         bottom = max(text_recs[index][5], text_recs[index][7])
-        img = main(left, top, right, bottom, img, videoName, outputPath, frameNum, index)
-    return img
+        img, subtitle_height = main(left, top, right, bottom, img, videoName, outputPath, frameNum, index)
+        subtitle_height_list.append(subtitle_height)
+    return img, subtitle_height_list
 
 
 if __name__ == '__main__':

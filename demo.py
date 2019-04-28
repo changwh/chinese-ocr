@@ -6,6 +6,7 @@ from PIL import Image
 import time
 import cv2
 import os
+import shutil
 from PIL import Image, ImageDraw, ImageFont
 
 
@@ -33,6 +34,10 @@ from PIL import Image, ImageDraw, ImageFont
 #     print(output_path)
 
 def start(input_path_list, output_path):
+    if os.path.exists(output_path):
+        shutil.rmtree(output_path)
+    os.makedirs(output_path)
+
     for video_name in input_path_list:
         print(video_name)
         videoCapture = cv2.VideoCapture(video_name)
@@ -54,7 +59,7 @@ def start(input_path_list, output_path):
             t = time.time()
 
             # # 根据需要跳帧
-            # if frameNum > 1500:
+            # if frameNum % 20 != 0:
             #     success, frame = videoCapture.read()
             #     continue
 
@@ -70,8 +75,8 @@ def start(input_path_list, output_path):
 
                 # 在视频中嵌入识别结果
                 frame = cv2ImgAddText(frame, result[key][1], int(result[key][0][0] / f),
-                                      int(result[key][0][1] / f) - 150,
-                                      textColor=(0, 255, 0), textSize=36)
+                                      int(result[key][0][1] / f) - 120,
+                                      textColor=(0, 255, 0), textSize=50)
 
             # 将加框后图片拼接成视频
             videoWriter.write(frame)
@@ -104,5 +109,6 @@ if __name__ == '__main__':
     #     print(result[key][1])
     #
 
-    start(["/home/user/PycharmProjects/text-detection-ctpn/data/video/77374694-1-64.flv", "/home/user/PycharmProjects/text-detection-ctpn/data/video/0.flv"],
+    start(["/home/user/PycharmProjects/text-detection-ctpn/data/video/77374694-1-64.flv",
+           "/home/user/PycharmProjects/text-detection-ctpn/data/video/0.flv"],
           "/home/user/test_results")
