@@ -63,6 +63,8 @@ class Queue():
 # global variables
 canny_img_queue = Queue(2)
 height_filt_per = 0.04
+left_top_y = 0.7
+left_bottom_y = 1
 count_of_frame_with_subtitle = 0
 results_dict = {}
 
@@ -160,10 +162,6 @@ def subtitle_filter1(boxes, img_height, img_width):
     temp = []
     for index, box in enumerate(boxes):
         # 将不满足限制条件的文字框加入到待删除列表中
-        # if box[1] < img_height * roi_y_per or \
-        #         box[0] > img_width * roi_x_per or \
-        #         box[7] - box[1] < img_height * (height_filt_per - 0.03) or \
-        #         box[7] - box[1] > img_height * (height_filt_per + 0.1):
         if box[1] < img_height * roi_y_per or \
                 box[0] > img_width * roi_x_per:
             temp.append(index)
@@ -173,7 +171,7 @@ def subtitle_filter1(boxes, img_height, img_width):
 
 
 # 字幕过滤
-def subtitle_filter2(boxes, img_height, img_width, height_filt_per, subtitle_height_list, canny_img2_list):
+def subtitle_filter2(boxes, img_height, img_width, real_height, real_width, height_filt_per, left_top_y, left_bottom_y, subtitle_height_list, canny_img2_list):
     # 宽度限制
     pass
     # 高度限制
@@ -181,27 +179,17 @@ def subtitle_filter2(boxes, img_height, img_width, height_filt_per, subtitle_hei
     pass
 
     temp = []
-    # for index, box in enumerate(boxes):
-    #     # 将不满足限制条件的文字框加入到待删除列表中
-    #     if (box[7] - box[1] < img_height * (height_filt_per - 0.01) or box[7] - box[1] > img_height * (height_filt_per + 0.03)) and count_of_frame_with_subtitle < 500:
-    #     # if box[1] < img_height * roi_y_per or \
-    #     #         box[0] > img_width * roi_x_per:
-    #         temp.append(index)
-    #     if (box[7] - box[1] < img_height * (height_filt_per - 0.003) or box[7] - box[1] > img_height * (height_filt_per + 0.02)) and count_of_frame_with_subtitle >= 500:
-    #     # if box[1] < img_height * roi_y_per or \
-    #     #         box[0] > img_width * roi_x_per:
-    #         temp.append(index)
 
     # TODO:将判断条件改写成绝对值
     for index, subtitle_height in enumerate(subtitle_height_list):
         # 将不满足限制条件的文字框加入到待删除列表中
-        if (subtitle_height < img_height * (height_filt_per - 0.01) or subtitle_height > img_height * (height_filt_per + 0.03)) and count_of_frame_with_subtitle < 500:
-        # if box[1] < img_height * roi_y_per or \
-        #         box[0] > img_width * roi_x_per:
+        if (subtitle_height < real_height * (height_filt_per - 0.01) or subtitle_height > real_height * (height_filt_per + 0.03)) and count_of_frame_with_subtitle < 500:
             temp.append(index)
-        if (subtitle_height < img_height * (height_filt_per - 0.005) or subtitle_height > img_height * (height_filt_per + 0.005)) and count_of_frame_with_subtitle >= 500:
-        # if box[1] < img_height * roi_y_per or \
-        #         box[0] > img_width * roi_x_per:
+        if (subtitle_height < real_height * (height_filt_per - 0.005) or subtitle_height > real_height * (height_filt_per + 0.005)) and count_of_frame_with_subtitle >= 500:
+            # print("filter 1")
+            temp.append(index)
+        if (boxes[index][1] < (left_top_y - 0.015) * img_height or boxes[index][7] > (left_bottom_y + 0.015) * img_height) and count_of_frame_with_subtitle >= 500:
+            # print("filter 2")
             temp.append(index)
 
     boxes = np.delete(boxes, temp, axis=0)
@@ -266,17 +254,20 @@ def model(img, imgNo, videoName, outputPath, model='keras', adjust=False, detect
 
     # 每一帧中只随机抽取一个高度,避免某一帧中非字幕文本对平均高度的影响,通过前500帧含有字幕的图像获取字幕高度
     global height_filt_per
+    global left_top_y
+    global left_bottom_y
     global count_of_frame_with_subtitle
     global results_dict
     if subtitle_height_list and count_of_frame_with_subtitle < 500:
-        print("previous subtitle height: "+str(height_filt_per))
         index = randint(0, len(subtitle_height_list) - 1)
         height_filt_per = 0.9 * height_filt_per + 0.1 * subtitle_height_list[index] / real_img.shape[0]
+        left_top_y = 0.9 * left_top_y + 0.1 * real_recs[index][1] / real_img.shape[0]
+        left_bottom_y = 0.9 * left_bottom_y + 0.1 * real_recs[index][7] / real_img.shape[0]
         count_of_frame_with_subtitle = count_of_frame_with_subtitle + 1
-        print("subtitle height: "+str(height_filt_per))
 
-    # 第二次字幕过滤(高度)
-    text_recs, canny_img2_list = subtitle_filter2(text_recs, real_img.shape[0], real_img.shape[1], height_filt_per, subtitle_height_list, canny_img2_list)
+
+    # 第二次字幕过滤(高度,更精确的横坐标)
+    text_recs, canny_img2_list = subtitle_filter2(text_recs, img.shape[0], img.shape[1], real_img.shape[0], real_img.shape[1], height_filt_per, left_top_y, left_bottom_y, subtitle_height_list, canny_img2_list)
     if text_recs is None or len(text_recs) == 0:
         return [], real_img, angle, [], f
 
@@ -295,7 +286,7 @@ def model(img, imgNo, videoName, outputPath, model='keras', adjust=False, detect
     if canny_img_queue.isfull():
         difference = get_img_difference(canny_img_queue.queue[0][0], canny_img_queue.queue[1][0])
         print("the difference between " + str(imgNo) + " and " + str(imgNo - 1) + ":" + str(difference))
-        if difference >= 10:
+        if difference >= 6:
             print(str(imgNo) + " different from " + str(imgNo - 1))
             results_dict.clear()
 

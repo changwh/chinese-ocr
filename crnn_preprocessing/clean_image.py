@@ -39,7 +39,7 @@ def project_y(img):
 def clean(data, img, type_xy):
     mean = np.mean(data)
     global index_1
-    index_1 = 0
+    index_1 = -1
     if type_xy == 'x':
         mean = mean + 1
     for i, element in enumerate(data):
@@ -69,7 +69,7 @@ def wash_canny_picture(img):
     data_y = project_y(img)
     # data_x = project_x(img)
 
-    top = clean(data_y, img, 'y')  # top
+    top = clean(data_y, img, 'y')   # top
 
     img = imutils.rotate_bound(img, 90)  # right
     # clean(data_x, img, 'x')
@@ -83,12 +83,14 @@ def wash_canny_picture(img):
     # clean(data_x, img, 'x')
 
     img = imutils.rotate_bound(img, 90)  # 恢复
-
+        
     subtitle_height = len(data_y) - top - bottom
+    if top < 0 and bottom < 0:
+        subtitle_height = 0
     # cv.imshow('ss', img)
     # if cv.waitKey(0) == ord('q'):
     #     pass
-
+    
     return img, subtitle_height
 
 

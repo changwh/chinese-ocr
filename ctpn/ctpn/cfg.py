@@ -32,5 +32,5 @@ class Config:
     TEXT_PROPOSALS_MIN_SCORE=0.7    # 判断一行是否为文字的评分阈值
     TEXT_PROPOSALS_NMS_THRESH=0.2
     MIN_NUM_PROPOSALS=0             # min count of proposals
-    MIN_V_OVERLAPS=0.85             # 垂直方向最小交并比(用于拼接文本行)
-    MIN_SIZE_SIM=0.8                # 推荐框大小相似度最小值(用于拼接文本行)
+    MIN_V_OVERLAPS=0.7              # 垂直方向最小交并比(用于拼接文本行)
+    MIN_SIZE_SIM=0.7                # 推荐框大小相似度最小值(用于拼接文本行)

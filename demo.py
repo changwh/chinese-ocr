@@ -142,8 +142,8 @@ if __name__ == '__main__':
     #     print(result[key][1])
     #
 
-    start_video(["/home/user/PycharmProjects/text-detection-ctpn/data/video2/1.mp4"],   # 2:5250-7000
-                "/home/user/test_similarity9")
+    start_video(["/home/user/PycharmProjects/text-detection-ctpn/data/video2/1.mp4"],   # 1:5550-7250   2:5330-7250
+                "/home/user/test_similarity14")
     # start_img(["/home/user/PycharmProjects/text-detection-ctpn/data/test_img/p1.jpg",
     #            "/home/user/PycharmProjects/text-detection-ctpn/data/test_img/p2.jpg",
     #            "/home/user/PycharmProjects/text-detection-ctpn/data/test_img/p3.jpg",

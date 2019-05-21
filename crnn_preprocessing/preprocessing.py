@@ -3,6 +3,7 @@ import numpy as np
 import cv2 as cv
 import sys
 import os
+import random
 from . import clean_image
 
 # import natsort
@@ -102,19 +103,20 @@ def clean_the_line(img, i, j, row, col):
     return 0
 
 
-def dilate_demo2(img):
+def dilate_demo2(img, dilate_kernel):
+    # gray = cv.cvtColor(img, cv.COLOR_BGR2GRAY)
     ret, thresh = cv.threshold(img, 0, 255, cv.THRESH_BINARY | cv.THRESH_OTSU)
     # cv.imshow('binary iamge', thresh)
-    kernel = cv.getStructuringElement(cv.MORPH_RECT, (7, 7))  # kernel(8, 8) todo:finetune
+    kernel = cv.getStructuringElement(cv.MORPH_RECT, (dilate_kernel, dilate_kernel))    # kernel(8, 8)
     dst = cv.dilate(thresh, kernel)
     # cv.imwrite('pengzhang.png', dst)
     # cv.imshow('dilate image', dst)
     return dst
 
 
-def erode_demo(img):
+def erode_demo(img, erode_kernel):
     ret, thresh = cv.threshold(img, 0, 255, cv.THRESH_BINARY | cv.THRESH_OTSU)
-    kernel = cv.getStructuringElement(cv.MORPH_RECT, (5, 5))  # kernel(5,5) todo:finetune
+    kernel = cv.getStructuringElement(cv.MORPH_RECT, (erode_kernel, erode_kernel))      # kernel(5,5)
     dst = cv.erode(thresh, kernel=kernel)
     # cv.imwrite('jieguo.png', dst)
     # cv.imshow('erode_demo', dst)
@@ -171,6 +173,125 @@ def convert(image):
     return image
 
 
+def get_the_width(gray_image, canny_img2):
+    ret, thresh1 = cv.threshold(gray_image, 245, 255, cv.THRESH_BINARY)
+    # cv.imshow('1', thresh1)
+    # cv.imwrite('2.jpg', canny_img2)
+    row = thresh1.shape[0]
+    col = thresh1.shape[1]
+    i = 0
+    j = 0
+    num = 0
+    list1 = []
+    while (i < row):
+        j = 0
+        while(j < col):
+            if thresh1[i, j] == 255:
+                num = num + 1
+                list1.append([i, j])
+            j = j+1
+        i = i+1
+    v = 0
+
+    index = 0
+    if num > 0:
+        the_width_list = np.arange(50)
+        while v < 50 and index < 300:
+            the_width = creat_random(canny_img2, num, list1)
+            if the_width != 0:
+                the_width_list[v] = the_width
+                v = v+1
+            index = index + 1
+        counts = np.bincount(the_width_list)
+        final_width = np.argmax(counts)
+        # print(final_width)
+        return final_width
+    return 0
+
+
+def creat_random(canny_img2, num, list1):
+    ss = random.randint(0, num-1)
+    max_x = canny_img2.shape[0]
+    max_y = canny_img2.shape[1]
+
+    x = list1[ss][0]
+    y = list1[ss][1]
+    top = 0
+    top_index = 0
+    if canny_img2[x, y, 0] == 0:
+        while(top_index == 0):
+            x = x+1
+            if x < max_x:
+                if canny_img2[x, y, 0] == 0:
+                    top = top+1
+                else:
+                    top_index = 1
+            else:
+                top_index = 1
+
+    x = list1[ss][0]
+    y = list1[ss][1]
+    bottom = 0
+    bottom_index = 0
+    if canny_img2[x, y, 0] == 0:
+        while(bottom_index == 0):
+            x = x-1
+            if x >= 0:
+                if canny_img2[x, y, 0] == 0:
+                    bottom = bottom+1
+                else:
+                    bottom_index = 1
+            else:
+                bottom_index = 1
+
+    x = list1[ss][0]
+    y = list1[ss][1]
+    left = 0
+    left_index = 0
+    if canny_img2[x, y, 0] == 0:
+        while(left_index == 0):
+            y = y-1
+            if y >= 0:
+                if canny_img2[x, y, 0] == 0:
+                    left = left+1
+                else:
+                    left_index = 1
+            else:
+                left_index = 1
+
+    x = list1[ss][0]
+    y = list1[ss][1]
+    right = 0
+    right_index = 0
+    if canny_img2[x, y, 0] == 0:
+        while(right_index == 0):
+            y = y + 1
+            if y < max_y:
+                if canny_img2[x, y, 0] == 0:
+                    right = right+1
+                else:
+                    right_index = 1
+            else:
+                right_index = 1
+
+    the_num1 = top + bottom
+    the_num2 = left + right
+
+    if the_num1 < the_num2:
+        the_final_num = the_num1
+    else:
+        the_final_num = the_num2
+
+    if the_final_num < 10 and the_final_num > 1:
+        # print the_final_num + 1
+        return the_final_num + 1
+
+    # print top , bottom
+    # print left, right
+
+    return 0
+
+
 def main(left, top, right, bottom, img, videoName, outputPath, frameNum, index):
     # left = 553
     # top = 615
@@ -204,6 +325,7 @@ def main(left, top, right, bottom, img, videoName, outputPath, frameNum, index):
 
     canny_img = cv.cvtColor(canny_img, cv.COLOR_GRAY2BGR)
     canny_img2 = precess(thresh2, canny_img)
+    the_width = get_the_width(gray_image, canny_img2)
     canny_img2, subtitle_height = clean_image.wash_canny_picture(canny_img2)
     # canny_img2 = precess_2(canny_img2)
     # cv.imshow('canny 2', canny_img2)
@@ -213,8 +335,15 @@ def main(left, top, right, bottom, img, videoName, outputPath, frameNum, index):
     # np.savetxt(os.path.join(outputPath, "cropped_pic_{}_{}".format(base_name.split('.')[0], frameNum),
     #                         "4_canny2_{}_{}_{}.txt".format(base_name.split('.')[0], frameNum, index)), canny_img2, fmt='%d')
 
-    step1 = dilate_demo2(canny_img2)
-    step2 = erode_demo(step1)
+    if the_width >= 4:
+        dilate_kernel = 7
+        erode_kernel = 5
+    else:
+        dilate_kernel = 6
+        erode_kernel = 4
+
+    step1 = dilate_demo2(canny_img2, dilate_kernel)
+    step2 = erode_demo(step1, erode_kernel)
 
     output = get_result(step2, roi)
     convert(output)
