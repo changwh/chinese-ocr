@@ -105,7 +105,7 @@ def clean_the_line(img, i, j, row, col):
 def dilate_demo2(img):
     ret, thresh = cv.threshold(img, 0, 255, cv.THRESH_BINARY | cv.THRESH_OTSU)
     # cv.imshow('binary iamge', thresh)
-    kernel = cv.getStructuringElement(cv.MORPH_RECT, (8, 8))  # kernel(8, 8)
+    kernel = cv.getStructuringElement(cv.MORPH_RECT, (7, 7))  # kernel(8, 8) todo:finetune
     dst = cv.dilate(thresh, kernel)
     # cv.imwrite('pengzhang.png', dst)
     # cv.imshow('dilate image', dst)
@@ -114,7 +114,7 @@ def dilate_demo2(img):
 
 def erode_demo(img):
     ret, thresh = cv.threshold(img, 0, 255, cv.THRESH_BINARY | cv.THRESH_OTSU)
-    kernel = cv.getStructuringElement(cv.MORPH_RECT, (5, 5))  # kernel(5,5)
+    kernel = cv.getStructuringElement(cv.MORPH_RECT, (5, 5))  # kernel(5,5) todo:finetune
     dst = cv.erode(thresh, kernel=kernel)
     # cv.imwrite('jieguo.png', dst)
     # cv.imshow('erode_demo', dst)
@@ -185,7 +185,7 @@ def main(left, top, right, bottom, img, videoName, outputPath, frameNum, index):
     gray_image = cv.cvtColor(roi, cv.COLOR_BGR2GRAY)
 
     # 边缘检测得到边缘图片
-    canny_img = cv.Canny(roi, 40, 120)
+    canny_img = cv.Canny(roi, 40, 120)  # 与视频清晰度相关,清晰度越高,阈值可相应调高(1:3)
     # cv.imshow('canny 1', canny_img)
     cv.imwrite(os.path.join(outputPath, "cropped_pic_{}_{}".format(base_name.split('.')[0], frameNum),
                             "1_canny_{}_{}_{}.jpg".format(base_name.split('.')[0], frameNum, index)), canny_img)
@@ -229,19 +229,21 @@ def main(left, top, right, bottom, img, videoName, outputPath, frameNum, index):
     #     pass
 
     cv.imwrite(os.path.join(outputPath, "final_{}_{}.jpg".format(base_name.split('.')[0], str(frameNum))), img)
-    return img, subtitle_height
+    return img, subtitle_height, canny_img2
 
 
 def p_picture(text_recs, img, videoName, outputPath, frameNum):
     subtitle_height_list = []
+    canny2_img_list = []
     for index in range(len(text_recs)):
         left = max(min(text_recs[index][0], text_recs[index][4]), 0)
         top = min(text_recs[index][1], text_recs[index][3])
         right = min(max(text_recs[index][2], text_recs[index][6]), img.shape[1])
         bottom = max(text_recs[index][5], text_recs[index][7])
-        img, subtitle_height = main(left, top, right, bottom, img, videoName, outputPath, frameNum, index)
+        img, subtitle_height, canny2_img = main(left, top, right, bottom, img, videoName, outputPath, frameNum, index)
         subtitle_height_list.append(subtitle_height)
-    return img, subtitle_height_list
+        canny2_img_list.append(canny2_img)
+    return img, subtitle_height_list, canny2_img_list
 
 
 if __name__ == '__main__':

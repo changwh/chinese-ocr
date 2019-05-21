@@ -10,30 +10,61 @@ import shutil
 from PIL import Image, ImageDraw, ImageFont
 
 
-# # 截帧
-# def getFrame(input_path_list, output_path):
-#     for video_name in input_path_list:
-#         print(video_name)
-#         videoCapture = cv2.VideoCapture(video_name)
-#         success, frame = videoCapture.read()
-#         frameNum = 0
-#
-#         base_name = video_name.split('/')[-1]
-#
-#         while (success):
-#             frameNum = frameNum + 1
-#
-#             # 根据需要跳帧
-#             if frameNum % 20 != 0:
-#                 success, frame = videoCapture.read()
-#                 continue
-#             cv2.imwrite(
-#                 os.path.join(output_path, "origin_{}_{}.jpg".format(base_name.split('.')[0], frameNum)),
-#                 frame)
-#             success, frame = videoCapture.read()
-#     print(output_path)
+# 截帧
+def getFrame(input_path_list, output_path):
+    for video_name in input_path_list:
+        print(video_name)
+        videoCapture = cv2.VideoCapture(video_name)
+        success, frame = videoCapture.read()
+        frameNum = 0
 
-def start(input_path_list, output_path):
+        base_name = video_name.split('/')[-1]
+
+        while (success):
+            frameNum = frameNum + 1
+
+            # 根据需要跳帧
+            if frameNum % 6500 != 0:
+                success, frame = videoCapture.read()
+                continue
+            cv2.imwrite(
+                os.path.join(output_path, "origin_{}_{}.jpg".format(base_name.split('.')[0], frameNum)),
+                frame)
+            success, frame = videoCapture.read()
+    print(output_path)
+
+
+def start_img(input_path_list, output_path):
+    if os.path.exists(output_path):
+        shutil.rmtree(output_path)
+    os.makedirs(output_path)
+
+    for img_name in input_path_list:
+        print(img_name)
+        img = cv2.imread(img_name)
+        t = time.time()
+
+        result, img, angle, real_recs, f = model.model(img, 0, img_name, output_path, model='crnn', detectAngle=False,
+                                                       is_crop=True)
+        print("Frame number:{}, It takes time:{}s".format(0, time.time() - t))
+        print("---------------------------------------")
+        # print("图像的文字朝向为:{}度".format(angle))
+        print("识别结果:")
+
+        for key in result:
+            print(result[key][1])
+
+            # 在视频中嵌入识别结果
+            img = cv2ImgAddText(img, result[key][1], int(result[key][0][0] / f), int(result[key][0][1] / f) - 120,
+                                textColor=(0, 255, 0), textSize=50)
+
+        cv2.imwrite(os.path.join(output_path,
+                                 "final_{}_{}.jpg".format(img_name.split('/')[-1].split('.')[0], str(0))), img)
+
+    print(output_path)
+
+
+def start_video(input_path_list, output_path):
     if os.path.exists(output_path):
         shutil.rmtree(output_path)
     os.makedirs(output_path)
@@ -58,10 +89,10 @@ def start(input_path_list, output_path):
             frameNum = frameNum + 1
             t = time.time()
 
-            # # 根据需要跳帧
-            # if frameNum % 20 != 0:
-            #     success, frame = videoCapture.read()
-            #     continue
+            # 根据需要跳帧
+            if frameNum < 5500 or frameNum > 7250:
+                success, frame = videoCapture.read()
+                continue
 
             result, frame, angle, real_recs, f = model.model(frame, frameNum, video_name, output_path, model='crnn',
                                                              detectAngle=False, is_crop=True)
@@ -80,7 +111,9 @@ def start(input_path_list, output_path):
 
             # 将加框后图片拼接成视频
             videoWriter.write(frame)
-
+            cv2.imwrite(os.path.join(output_path,
+                                     "final_{}_{}.jpg".format(video_name.split('/')[-1].split('.')[0], str(frameNum))),
+                        frame)
             success, frame = videoCapture.read()
 
     print(output_path)
@@ -109,6 +142,13 @@ if __name__ == '__main__':
     #     print(result[key][1])
     #
 
-    start(["/home/user/PycharmProjects/text-detection-ctpn/data/video/77374694-1-64.flv",
-           "/home/user/PycharmProjects/text-detection-ctpn/data/video/0.flv"],
-          "/home/user/test_results")
+    start_video(["/home/user/PycharmProjects/text-detection-ctpn/data/video2/1.mp4"],   # 2:5250-7000
+                "/home/user/test_similarity9")
+    # start_img(["/home/user/PycharmProjects/text-detection-ctpn/data/test_img/p1.jpg",
+    #            "/home/user/PycharmProjects/text-detection-ctpn/data/test_img/p2.jpg",
+    #            "/home/user/PycharmProjects/text-detection-ctpn/data/test_img/p3.jpg",
+    #            "/home/user/PycharmProjects/text-detection-ctpn/data/test_img/p4.jpg",
+    #            "/home/user/PycharmProjects/text-detection-ctpn/data/test_img/p5.jpg",
+    #            "/home/user/PycharmProjects/text-detection-ctpn/data/test_img/p6.jpg"],
+    #             "/home/user/test_img_results")   
+    # getFrame(["/home/user/PycharmProjects/text-detection-ctpn/data/video2/2.mp4"], "/home/user/frame")

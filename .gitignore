@@ -24,6 +24,9 @@ wheels/
 .installed.cfg
 *.egg
 MANIFEST
+img
+test
+test2
 
 # PyInstaller
 #  Usually these files are written by a python script from a template
@@ -105,3 +108,13 @@ venv.bak/
 .DS_Store
 *.pth
 .idea
+.vscode
+
+# model
+*.h5
+
+# font
+*.otf
+
+# UI(to be modified)
+/UI

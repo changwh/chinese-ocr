@@ -7,7 +7,8 @@ pip install easydict -i https://pypi.tuna.tsinghua.edu.cn/simple/ ##选择国内
 pip install Cython -i https://pypi.tuna.tsinghua.edu.cn/simple/ 
 pip install matplotlib -i https://pypi.tuna.tsinghua.edu.cn/simple/ 
 pip install -U pillow -i https://pypi.tuna.tsinghua.edu.cn/simple/
-pip install  h5py lmdb mahotas -i https://pypi.tuna.tsinghua.edu.cn/simple/
+pip install h5py lmdb mahotas -i https://pypi.tuna.tsinghua.edu.cn/simple/  ##gcc需要降级至5.5.0
+pip install imagehash -i https://pypi.tuna.tsinghua.edu.cn/simple/
 #conda install pytorch=1.0.1 torchvision -c https://mirrors.tuna.tsinghua.edu.cn/anaconda/cloud/pytorch/linux-64/   ##Could not create cudnn handle: CUDNN_STATUS_INTERNAL_ERROR
 pip install torch torchvision -i https://pypi.tuna.tsinghua.edu.cn/simple/
 conda install tensorflow=1.10 tensorflow-gpu=1.10
