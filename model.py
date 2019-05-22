@@ -6,19 +6,18 @@ import sys
 import cv2
 import numpy as np
 
+sys.path.append('ctpn')
+
 from math import *
 from PIL import Image
+from random import randint
 from ctpn.text_detect import text_detect
 from ocr.model import predict as ocr
 from crnn.crnn import crnnOcr
-from random import randint
-
 from ctpn.ctpn.cfg import Config
 from ctpn.ctpn.other import resize_im
 from crnn_preprocessing import preprocessing
 from crnn_preprocessing.img_difference import get_img_difference
-
-sys.path.append('ctpn')
 
 
 class Queue():
