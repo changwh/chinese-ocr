@@ -171,8 +171,7 @@ def subtitle_filter(boxes, img_height, img_width,
 
         boxes = np.delete(boxes, temp, axis=0)
         return sort_box(boxes)
-
-    if seq == 1:
+    elif seq == 1:
         for index, subtitle_height in enumerate(subtitle_height_list):
             if COUNT_OF_FRAME_WITH_SUBTITLE < COUNT_OF_LOOSE_FRAME:
                 if subtitle_height < real_height * (HEIGHT_OF_SUBTITLE_FILTER_PER - height_min_delta) \
