@@ -295,9 +295,11 @@ def model(img, imgNo, videoName, outputPath, model='keras', adjust=False, output
     # 比较当前帧与上一帧,判断是否为统一字幕,若不是,清空结果列表
     if CANNY_IMG_QUEUE.is_full():
         difference = get_img_difference(CANNY_IMG_QUEUE.queue[0][0], CANNY_IMG_QUEUE.queue[1][0])
-        print("the difference between " + str(imgNo) + " and " + str(imgNo - 1) + ":" + str(difference))
+        if output_process:
+            print("the difference between " + str(imgNo) + " and " + str(imgNo - 1) + ":" + str(difference))
         if difference >= DIFFERENT_THRESHOLD:
-            print(str(imgNo) + " different from " + str(imgNo - 1))
+            if output_process:
+                print(str(imgNo) + " different from " + str(imgNo - 1))
             RESULTS_DICT.clear()
 
     # 根据是否为同一字幕采用投票策略,输出出现最多的结果
