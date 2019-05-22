@@ -3,7 +3,7 @@ from ctpn.ctpn.cfg import Config as cfg
 from ctpn.ctpn.other import  normalize
 import numpy as np
 #import sys
-from lib.fast_rcnn.nms_wrapper import nms
+from ..lib.fast_rcnn.nms_wrapper import nms
 #from lib.fast_rcnn.test import  test_ctpn
 
 from ctpn.ctpn.text_proposal_connector import TextProposalConnector

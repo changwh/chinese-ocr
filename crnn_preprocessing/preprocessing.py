@@ -348,7 +348,7 @@ def main(left, top, right, bottom, img, videoName, outputPath, frameNum, index):
     output = get_result(step2, roi)
     convert(output)
 
-    img[top:bottom, left:right] = output
+    # img[top:bottom, left:right] = output
 
     cv.imwrite(os.path.join(outputPath, "cropped_pic_{}_{}".format(base_name.split('.')[0], frameNum),
                             "5_erode_{}_{}_{}.jpg".format(base_name.split('.')[0], frameNum, index)), step2)
@@ -357,21 +357,31 @@ def main(left, top, right, bottom, img, videoName, outputPath, frameNum, index):
     # if cv.waitKey(0) == ord('q'):
     #     pass
 
-    cv.imwrite(os.path.join(outputPath, "final_{}_{}.jpg".format(base_name.split('.')[0], str(frameNum))), img)
-    return img, subtitle_height, canny_img2
+    # cv.imwrite(os.path.join(outputPath, "final_{}_{}.jpg".format(base_name.split('.')[0], str(frameNum))), img)
+    return output, subtitle_height, canny_img2
 
 
-def p_picture(text_recs, img, videoName, outputPath, frameNum):
+def p_picture(text_recs, img, frameNum, videoName, outputPath):
     subtitle_height_list = []
     canny2_img_list = []
+    output_list = []
+    location_list = []
     for index in range(len(text_recs)):
         left = max(min(text_recs[index][0], text_recs[index][4]), 0)
         top = min(text_recs[index][1], text_recs[index][3])
         right = min(max(text_recs[index][2], text_recs[index][6]), img.shape[1])
         bottom = max(text_recs[index][5], text_recs[index][7])
-        img, subtitle_height, canny2_img = main(left, top, right, bottom, img, videoName, outputPath, frameNum, index)
+        location = [top, bottom, left, right]
+        location_list.append(location)
+        output, subtitle_height, canny2_img = main(left, top, right, bottom, img, videoName, outputPath, frameNum, index)
+        output_list.append(output)
         subtitle_height_list.append(subtitle_height)
         canny2_img_list.append(canny2_img)
+
+    for index in range(len(text_recs)):
+        img[location_list[index][0]:location_list[index][1], location_list[index][2]:location_list[index][3]] = output_list[index]
+        cv.imwrite(os.path.join(outputPath, "final_{}_{}.jpg".format(videoName.split('/')[-1].split('.')[0], str(frameNum))), img)
+
     return img, subtitle_height_list, canny2_img_list
 
 
