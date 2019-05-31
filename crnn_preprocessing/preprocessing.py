@@ -335,9 +335,13 @@ def main(left, top, right, bottom, img, videoName, outputPath, frameNum, index):
     # np.savetxt(os.path.join(outputPath, "cropped_pic_{}_{}".format(base_name.split('.')[0], frameNum),
     #                         "4_canny2_{}_{}_{}.txt".format(base_name.split('.')[0], frameNum, index)), canny_img2, fmt='%d')
 
+    # TODO:需要通过测试获得更多的参数
     if the_width >= 4:
         dilate_kernel = 7
         erode_kernel = 5
+    elif the_width <= 2:
+        dilate_kernel = 4
+        erode_kernel = 3
     else:
         dilate_kernel = 6
         erode_kernel = 4
@@ -380,7 +384,8 @@ def p_picture(text_recs, img, frameNum, videoName, outputPath):
 
     for index in range(len(text_recs)):
         img[location_list[index][0]:location_list[index][1], location_list[index][2]:location_list[index][3]] = output_list[index]
-        cv.imwrite(os.path.join(outputPath, "final_{}_{}.jpg".format(videoName.split('/')[-1].split('.')[0], str(frameNum))), img)
+
+    cv.imwrite(os.path.join(outputPath, "final_{}_{}.jpg".format(videoName.split('/')[-1].split('.')[0], str(frameNum))), img)
 
     return img, subtitle_height_list, canny2_img_list
 

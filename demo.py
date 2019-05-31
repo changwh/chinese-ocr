@@ -109,5 +109,11 @@ def start_video(input_path_list, output_path, start_frame=None, end_frame=None, 
 
 if __name__ == '__main__':
     start_video(["/home/user/PycharmProjects/text-detection-ctpn/data/video2/1.mp4"],
-                "/home/user/test_similarity14",
+                "/home/user/mytest8",
                 start_frame=5500, end_frame=7250, output_process=True)
+                # 1: 5500-7250
+                # 2: 5325-7250
+                # 3: 3875-6275
+                # 4: 5275-5925
+                # 5: 12825-14300
+                # 6: 2625-3450

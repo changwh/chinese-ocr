@@ -1,22 +1,22 @@
 # coding:utf-8
-##添加文本方向 检测模型，自动检测文字方向，0、90、180、270
 import os
 import shutil
 import sys
 import cv2
+import re
 import numpy as np
 
-sys.path.append('ctpn')     # 此行位置影响from import速度
+sys.path.append('ctpn')
 
 from math import *
 from PIL import Image
 from random import randint
-from ocr.model import predict as ocr
 from ctpn.text_detect import text_detect
-from ctpn.ctpn.cfg import Config
-from ctpn.ctpn.other import resize_im
+from ocr.model import predict as ocr
 from crnn.crnn import crnnOcr
 from crnn_preprocessing import preprocessing
+from ctpn.ctpn.cfg import Config
+from ctpn.ctpn.other import resize_im
 from crnn_preprocessing.img_difference import get_img_difference
 
 
@@ -65,8 +65,8 @@ LEFT_TOP_Y_PER = 0.7
 LEFT_BOTTOM_Y_PER = 1
 COUNT_OF_FRAME_WITH_SUBTITLE = 0
 RESULTS_DICT = {}
-COUNT_OF_LOOSE_FRAME = 500  #TODO:finetune
-DIFFERENT_THRESHOLD = 6     #TODO:finetune
+COUNT_OF_LOOSE_FRAME = 500  # TODO:finetune
+DIFFERENT_THRESHOLD = 6     # TODO:finetune
 
 
 def crnnRec(im, text_recs, ocrMode='keras', adjust=False):
@@ -149,15 +149,14 @@ def sort_box(box):
 
 # 字幕过滤
 def subtitle_filter(boxes, img_height, img_width,
-                    real_height=None, subtitle_height_list=None, canny_img2_list=None, seq=0):
+                    real_height=None, subtitle_height_list=None, canny_img2_list=None, seq=0, output_process=False):
     # roi限制
-    roi_y_per = 0.7
     roi_x_per = 0.5
     # 条件收束前字幕大小限制
     height_min_delta = 0.01
     height_max_delta = 0.03
     # 条件收束后字幕大小限制
-    height_delta_strict = 0.005
+    height_delta_strict = 0.01
     # 条件收束后字幕高度限制
     subtitle_location_y_delta = 0.015
 
@@ -165,7 +164,7 @@ def subtitle_filter(boxes, img_height, img_width,
     if seq == 0:
         for index, box in enumerate(boxes):
             # 将不满足限制条件的文字框加入到待删除列表中
-            if box[1] < img_height * roi_y_per or box[0] > img_width * roi_x_per:
+            if box[0] > img_width * roi_x_per:  # 字幕框最左端出现在屏幕右半边
                 temp.append(index)
 
         boxes = np.delete(boxes, temp, axis=0)
@@ -175,11 +174,19 @@ def subtitle_filter(boxes, img_height, img_width,
             if COUNT_OF_FRAME_WITH_SUBTITLE < COUNT_OF_LOOSE_FRAME:
                 if subtitle_height < real_height * (HEIGHT_OF_SUBTITLE_FILTER_PER - height_min_delta) \
                         or subtitle_height > real_height * (HEIGHT_OF_SUBTITLE_FILTER_PER + height_max_delta):
+                    if output_process:
+                        print("loose restriction")
+                        print("subtitle_height:" + str(subtitle_height) + ", restriction: max:" + str(real_height * (HEIGHT_OF_SUBTITLE_FILTER_PER + height_max_delta)) + " min:" + str(real_height * (HEIGHT_OF_SUBTITLE_FILTER_PER - height_min_delta)))
                     temp.append(index)
             else:
                 if abs(subtitle_height/real_height-HEIGHT_OF_SUBTITLE_FILTER_PER) > height_delta_strict \
                         or boxes[index][1] < (LEFT_TOP_Y_PER - subtitle_location_y_delta) * img_height \
                         or boxes[index][7] > (LEFT_BOTTOM_Y_PER + subtitle_location_y_delta) * img_height:
+                    if output_process:
+                        print("tight restriction")
+                        print("subtitle_height:" + str(subtitle_height) + ", restriction: max:" + str(real_height * (HEIGHT_OF_SUBTITLE_FILTER_PER + height_delta_strict)) + " , min:" + str(real_height * (HEIGHT_OF_SUBTITLE_FILTER_PER - height_delta_strict)))
+                        print("boxes top:" + str(boxes[index][1]) + ", restriction: min:" + str((LEFT_TOP_Y_PER - subtitle_location_y_delta) * img_height))
+                        print("boxes bottom:" + str(boxes[index][7]) + ", restriction: max:" + str((LEFT_BOTTOM_Y_PER + subtitle_location_y_delta) * img_height))
                     temp.append(index)
 
         boxes = np.delete(boxes, temp, axis=0)
@@ -232,7 +239,7 @@ def model(img, imgNo, videoName, outputPath, model='keras', adjust=False, output
     resize_im_width = img.shape[1]
 
     # 第一次字幕过滤(位置信息)
-    text_recs = subtitle_filter(text_recs, resize_im_height, resize_im_width, seq=0)
+    text_recs = subtitle_filter(text_recs, resize_im_height, resize_im_width, seq=0, output_process=output_process)
     if text_recs is None or len(text_recs) == 0:
         return [], real_img, [], f
 
@@ -258,26 +265,30 @@ def model(img, imgNo, videoName, outputPath, model='keras', adjust=False, output
     global COUNT_OF_FRAME_WITH_SUBTITLE
     global RESULTS_DICT
 
+    min_height_subtitle = 0.028 * real_img_height
+
     if subtitle_height_list and COUNT_OF_FRAME_WITH_SUBTITLE < COUNT_OF_LOOSE_FRAME:
-        index = randint(0, len(subtitle_height_list) - 1)   # 同一帧中检测到多个疑似字幕,则从中随机选择一个进行数据更新
-        HEIGHT_OF_SUBTITLE_FILTER_PER = 0.9 * HEIGHT_OF_SUBTITLE_FILTER_PER + 0.1 * subtitle_height_list[index] / real_img_height
-        LEFT_TOP_Y_PER = 0.9 * LEFT_TOP_Y_PER + 0.1 * text_recs[index][1] / resize_im_height
-        LEFT_BOTTOM_Y_PER = 0.9 * LEFT_BOTTOM_Y_PER + 0.1 * text_recs[index][7] / resize_im_height
-        COUNT_OF_FRAME_WITH_SUBTITLE = COUNT_OF_FRAME_WITH_SUBTITLE + 1
+        index = randint(0, len(subtitle_height_list) - 1)  # 同一帧中检测到多个疑似字幕,则从中随机选择一个进行数据更新
+        if subtitle_height_list[index] > min_height_subtitle:
+            HEIGHT_OF_SUBTITLE_FILTER_PER = 0.9 * HEIGHT_OF_SUBTITLE_FILTER_PER + 0.1 * subtitle_height_list[index] / real_img_height
+            LEFT_TOP_Y_PER = 0.9 * LEFT_TOP_Y_PER + 0.1 * text_recs[index][1] / resize_im_height
+            LEFT_BOTTOM_Y_PER = 0.9 * LEFT_BOTTOM_Y_PER + 0.1 * text_recs[index][7] / resize_im_height
+            COUNT_OF_FRAME_WITH_SUBTITLE = COUNT_OF_FRAME_WITH_SUBTITLE + 1
     elif subtitle_height_list and COUNT_OF_FRAME_WITH_SUBTITLE >= COUNT_OF_LOOSE_FRAME:
         index = randint(0, len(subtitle_height_list) - 1)  # 同一帧中检测到多个疑似字幕,则从中随机选择一个进行数据更新
-        HEIGHT_OF_SUBTITLE_FILTER_PER = 0.95 * HEIGHT_OF_SUBTITLE_FILTER_PER + 0.05 * subtitle_height_list[index] / real_img_height
-        LEFT_TOP_Y_PER = 0.95 * LEFT_TOP_Y_PER + 0.05 * text_recs[index][1] / resize_im_height
-        LEFT_BOTTOM_Y_PER = 0.95 * LEFT_BOTTOM_Y_PER + 0.05 * text_recs[index][7] / resize_im_height
-        COUNT_OF_FRAME_WITH_SUBTITLE = COUNT_OF_FRAME_WITH_SUBTITLE + 1
+        if subtitle_height_list[index] > min_height_subtitle:
+            HEIGHT_OF_SUBTITLE_FILTER_PER = 0.95 * HEIGHT_OF_SUBTITLE_FILTER_PER + 0.05 * subtitle_height_list[index] / real_img_height
+            LEFT_TOP_Y_PER = 0.95 * LEFT_TOP_Y_PER + 0.05 * text_recs[index][1] / resize_im_height
+            LEFT_BOTTOM_Y_PER = 0.95 * LEFT_BOTTOM_Y_PER + 0.05 * text_recs[index][7] / resize_im_height
+            COUNT_OF_FRAME_WITH_SUBTITLE = COUNT_OF_FRAME_WITH_SUBTITLE + 1
 
     if output_process:
         print("height of subtitle:" + str(HEIGHT_OF_SUBTITLE_FILTER_PER))
         print("left_top_y:" + str(LEFT_TOP_Y_PER))
         print("left_bottom_y:" + str(LEFT_BOTTOM_Y_PER))
 
-    # 第二次字幕过滤(高度,更精确的横坐标)
-    text_recs, canny_img2_list = subtitle_filter(text_recs, resize_im_height, resize_im_width, real_img_height, subtitle_height_list, canny_img2_list, seq=1)
+    # 第二次字幕过滤(高度,更精确的纵坐标)
+    text_recs, canny_img2_list = subtitle_filter(text_recs, resize_im_height, resize_im_width, real_img_height, subtitle_height_list, canny_img2_list, seq=1, output_process=output_process)
     if text_recs is None or len(text_recs) == 0:
         return [], real_img, [], f
 
@@ -301,17 +312,24 @@ def model(img, imgNo, videoName, outputPath, model='keras', adjust=False, output
                 print(str(imgNo) + " different from " + str(imgNo - 1))
             RESULTS_DICT.clear()
 
-    # 根据是否为同一字幕采用投票策略,输出出现最多的结果
+    # 根据是否为同一字幕采用投票策略,输出出现次数最多的结果
     for key in result:
+        # 去除检测结果最前端非中文字符,出现重复字符的彻底解决方法应为重新训练
+        pattern = re.compile(u"^[^\u4e00-\u9fa5]+")
+        result[key][1] = re.sub(pattern, '', result[key][1])
         if result[key][1] in RESULTS_DICT:
             RESULTS_DICT[result[key][1]] = int(RESULTS_DICT[result[key][1]]) + 1
         else:
             RESULTS_DICT[result[key][1]] = 1
 
-    results_list = sorted(RESULTS_DICT.items(), key=lambda x: x[1], reverse=True)
-    print(results_list[0])
+    # sorted(d,key=d.__getitem__,reverse=True):
+    # results_list = sorted(RESULTS_DICT.items(), key=lambda x: x[1], reverse=True)
+    for k in sorted(RESULTS_DICT, key=RESULTS_DICT.__getitem__, reverse=True):
+        if output_process:
+            print("result:" + k + ", times:" + str(RESULTS_DICT[k]))
+        result[key][1] = k
+        break
 
-    # TODO:增大筛选力度,否则需要考虑同一帧中出现多个疑似字幕的情况
     if output_process:
         return result, preprocessed_img, real_recs, f
     else:

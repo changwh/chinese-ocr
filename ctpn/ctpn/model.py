@@ -20,7 +20,7 @@ def load_tf_model():
     return sess, saver, net
 
 
-##init model
+# init model
 sess, saver, net = load_tf_model()
 
 
@@ -30,5 +30,10 @@ def ctpn(img):
     """
     scale, max_scale = Config.SCALE, Config.MAX_SCALE
     img, f = resize_im(img, scale=scale, max_scale=max_scale)
-    scores, boxes = test_ctpn(sess, net, img)
+    # restrict the region of interest
+    roi_img = img[int(img.shape[0] * 0.7):img.shape[0], 0:img.shape[1]]
+    scores, boxes = test_ctpn(sess, net, roi_img)
+    # get origin resized coordinates
+    boxes[:, 1] = boxes[:, 1] + int(img.shape[0] * 0.7)
+    boxes[:, 3] = boxes[:, 3] + int(img.shape[0] * 0.7)
     return scores, boxes, img, f
