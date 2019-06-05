@@ -301,12 +301,13 @@ def main(left, top, right, bottom, img, videoName, outputPath, frameNum, index):
     base_name = videoName.split('/')[-1]
 
     roi = img[top:bottom, left:right]
+    roi_copy = roi.copy()
 
     # 读取灰度图
-    gray_image = cv.cvtColor(roi, cv.COLOR_BGR2GRAY)
+    gray_image = cv.cvtColor(roi_copy, cv.COLOR_BGR2GRAY)
 
     # 边缘检测得到边缘图片
-    canny_img = cv.Canny(roi, 40, 120)  # 与视频清晰度相关,清晰度越高,阈值可相应调高(1:3)
+    canny_img = cv.Canny(roi_copy, 40, 120)  # 与视频清晰度相关,清晰度越高,阈值可相应调高(1:3)
     # cv.imshow('canny 1', canny_img)
     cv.imwrite(os.path.join(outputPath, "cropped_pic_{}_{}".format(base_name.split('.')[0], frameNum),
                             "1_canny_{}_{}_{}.jpg".format(base_name.split('.')[0], frameNum, index)), canny_img)
@@ -349,7 +350,7 @@ def main(left, top, right, bottom, img, videoName, outputPath, frameNum, index):
     step1 = dilate_demo2(canny_img2, dilate_kernel)
     step2 = erode_demo(step1, erode_kernel)
 
-    output = get_result(step2, roi)
+    output = get_result(step2, roi_copy)
     convert(output)
 
     # img[top:bottom, left:right] = output
@@ -360,9 +361,44 @@ def main(left, top, right, bottom, img, videoName, outputPath, frameNum, index):
     # cv.imshow('final!!!!!', img)
     # if cv.waitKey(0) == ord('q'):
     #     pass
-
+    cv.imwrite(os.path.join(outputPath, "cropped_pic_{}_{}".format(base_name.split('.')[0], frameNum),
+                            "6_output_{}_{}_{}.jpg".format(base_name.split('.')[0], frameNum, index)), output)
     # cv.imwrite(os.path.join(outputPath, "final_{}_{}.jpg".format(base_name.split('.')[0], str(frameNum))), img)
     return output, subtitle_height, canny_img2
+
+
+# 判断两个矩形框是否有重叠部分，并输出重叠部分位置
+def get_overlap_coordinate(location_a, location_b):
+    x = [location_a[0], location_a[2], location_b[0], location_b[2]]
+    y = [location_a[1], location_a[5], location_b[1], location_b[5]]
+    overlap_location = []
+    x.sort()
+    y.sort()
+    if y[1] != location_a[5]:
+        for index, value in enumerate(x):
+            if value == location_a[0]:
+                if x[index+1] != location_a[2]:
+                    overlap_location = [y[1], y[2], x[1], x[2]]
+            elif value == location_b[0]:
+                if x[index+1] != location_b[2]:
+                    overlap_location = [y[1], y[2], x[1], x[2]]
+    if overlap_location:
+        print(overlap_location)
+    else:
+        pass
+    return overlap_location
+
+
+def test_get_overlap_coordinate():
+    get_overlap_coordinate([600, 750, 900, 1050], [650, 700, 950, 1000])
+    get_overlap_coordinate([600, 700, 950, 1050], [650, 750, 900, 1000])
+    get_overlap_coordinate([600, 750, 900, 1050], [650, 700, 950, 1000])
+    get_overlap_coordinate([600, 750, 950, 1050], [650, 700, 900, 1000])
+    get_overlap_coordinate([600, 750, 900, 1000], [650, 700, 950, 1050])
+    get_overlap_coordinate([600, 700, 950, 1000], [650, 750, 900, 1050])
+    get_overlap_coordinate([600, 700, 900, 1050], [650, 750, 950, 1000])
+
+    get_overlap_coordinate([600, 650, 900, 950], [700, 750, 1000, 1050])
 
 
 def p_picture(text_recs, img, frameNum, videoName, outputPath):
@@ -382,8 +418,47 @@ def p_picture(text_recs, img, frameNum, videoName, outputPath):
         subtitle_height_list.append(subtitle_height)
         canny2_img_list.append(canny2_img)
 
+    overlap_part = []
+    overlap_coordinate_list = []
+
     for index in range(len(text_recs)):
+        if index + 1 < len(text_recs):
+            # 计算当前文本框与下一文本框是否存在重叠部分，若存在，获取重叠部分坐标
+            overlap_coordinate = get_overlap_coordinate(text_recs[index], text_recs[index + 1])
+            if overlap_coordinate:
+                # 计算重叠部分在当前文本框中的相对位置
+                relative_top = overlap_coordinate[0] - text_recs[index][1]
+                relative_bottom = overlap_coordinate[1] - text_recs[index][1]
+                relative_left = overlap_coordinate[2] - text_recs[index][0]
+                relative_right = overlap_coordinate[3] - text_recs[index][0]
+                overlap_part_1 = output_list[index][relative_top:relative_bottom, relative_left:relative_right]
+                overlap_p1_copy = overlap_part_1.copy()
+
+                # 计算重叠部分在下一文本框中的相对位置
+                relative_top = overlap_coordinate[0] - text_recs[index + 1][1]
+                relative_bottom = overlap_coordinate[1] - text_recs[index + 1][1]
+                relative_left = overlap_coordinate[2] - text_recs[index + 1][0]
+                relative_right = overlap_coordinate[3] - text_recs[index + 1][0]
+                overlap_part_2 = output_list[index + 1][relative_top:relative_bottom, relative_left:relative_right]
+                overlap_p2_copy = overlap_part_2.copy()
+
+                # 将两个文本框的重叠部分中的非白色部分进行整合
+                height = relative_bottom - relative_top
+                width = relative_right - relative_left
+                for i in range(height):
+                    for j in range(width):
+                        if overlap_p2_copy[i, j].any() != 255:
+                            overlap_p1_copy[i, j] = overlap_p2_copy[i, j]
+
+                overlap_coordinate_list.append(overlap_coordinate)
+                overlap_part.append(overlap_p1_copy)
+
+        # 将处理结果拼回原图（不考虑重叠问题）
         img[location_list[index][0]:location_list[index][1], location_list[index][2]:location_list[index][3]] = output_list[index]
+
+    # 将整合后的重叠部分拼回原图
+    for index in range(len(overlap_part)):
+        img[overlap_coordinate_list[index][0]:overlap_coordinate_list[index][1], overlap_coordinate_list[index][2]:overlap_coordinate_list[index][3]] = overlap_part[index]
 
     cv.imwrite(os.path.join(outputPath, "final_{}_{}.jpg".format(videoName.split('/')[-1].split('.')[0], str(frameNum))), img)
 
@@ -391,4 +466,5 @@ def p_picture(text_recs, img, frameNum, videoName, outputPath):
 
 
 if __name__ == '__main__':
+    test_get_overlap_coordinate()
     pass

@@ -143,7 +143,7 @@ def sort_box(box):
         text_recs[index, 7] = y4
     """
 
-    box = sorted(box, key=lambda x: sum([x[1], x[3], x[5], x[7]]))
+    box = sorted(box, key=lambda x: sum([x[1]]))    # 按左上角y轴坐标从上到下排序
     return box
 
 
