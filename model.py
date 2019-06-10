@@ -216,7 +216,11 @@ def crop_img(img, video_name, output_path, boxes, frameNum):
     i = 0
 
     for box in boxes:
-        cropped = img[int(box[1]):int(box[7]), int(box[0]):int(box[6])]  # 高度、宽度
+        left = max(min(box[0], box[4]), 0)
+        top = min(box[1], box[3])
+        right = min(max(box[2], box[6]), img.shape[1])
+        bottom = max(box[5], box[7])
+        cropped = img[int(top):int(bottom), int(left):int(right)]  # 高度、宽度
         cv2.imwrite(os.path.join(output_path, "cropped_pic_{}_{}".format(base_name.split('.')[0], frameNum),
                                  "{}_{}_{}.jpg".format(base_name.split('.')[0], frameNum, str(i))), cropped)
         i = i + 1
@@ -233,7 +237,7 @@ def model(img, imgNo, videoName, outputPath, model='keras', adjust=False, output
     real_img_height = real_img.shape[0]
     real_img_width = real_img.shape[1]
 
-    text_recs, drawn_img, img, f = text_detect(img)
+    text_recs, drawn_img, img, f = text_detect(img, top=0.7, bottom=1, left=0, right=1)
 
     resize_im_height = img.shape[0]
     resize_im_width = img.shape[1]
