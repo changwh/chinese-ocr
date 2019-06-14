@@ -83,7 +83,7 @@ def start_video(input_path_list, output_path, start_frame=None, end_frame=None, 
                     success, frame = video_capture.read()
                     continue
 
-            result, frame, real_recs, f = model.model(frame, frame_num, video_name, output_path,
+            result, frame, real_recs, is_scroll, f = model.model_news(frame, frame_num, video_name, output_path,
                                                       model='crnn', output_process=output_process)
             print("Frame number:{}, It takes time:{}s".format(frame_num, time.time() - t))
             print("---------------------------------------")
@@ -93,9 +93,14 @@ def start_video(input_path_list, output_path, start_frame=None, end_frame=None, 
                 print(result[key][1])
 
                 # 在视频中嵌入识别结果
-                frame = cv2_img_add_text(frame, result[key][1], int(result[key][0][0] / f),
+                if is_scroll[key] is False:
+                    frame = cv2_img_add_text(frame, result[key][1], int(result[key][0][0] / f),
                                          int(result[key][0][1] / f) - 120,
-                                         text_color=(0, 255, 0), text_size=50)
+                                         text_color=(0, 255, 0), text_size=40)
+                else:
+                    frame = cv2_img_add_text(frame, result[key][1], int(result[key][0][0] / f),
+                                         int(result[key][0][1] / f) - 120,
+                                         text_color=(255, 0, 0), text_size=40)
 
             # 将加框后图片拼接成视频
             videoWriter.write(frame)
@@ -108,9 +113,9 @@ def start_video(input_path_list, output_path, start_frame=None, end_frame=None, 
 
 
 if __name__ == '__main__':
-    start_video(["/home/user/PycharmProjects/text-detection-ctpn/data/video2/1.mp4"],
-                "/home/user/mytest13",
-                start_frame=5500, end_frame=7250, output_process=True)
+    start_video(["/home/user/PycharmProjects/text-detection-ctpn/data/news/2.mp4"],
+                "/home/user/mytest18",
+                start_frame=4562, output_process=True)
                 # 1: 5500-7250
                 # 2: 5325-7250
                 # 3: 3875-6275

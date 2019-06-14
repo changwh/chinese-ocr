@@ -337,13 +337,16 @@ def main(left, top, right, bottom, img, videoName, outputPath, frameNum, index):
     #                         "4_canny2_{}_{}_{}.txt".format(base_name.split('.')[0], frameNum, index)), canny_img2, fmt='%d')
 
     # TODO:需要通过测试获得更多的参数
-    if the_width >= 4:
+    if the_width >= 6:
+        dilate_kernel = 12
+        erode_kernel = 10
+    if the_width >= 4 and the_width < 6:
         dilate_kernel = 7
         erode_kernel = 5
     elif the_width <= 2:
         dilate_kernel = 4
         erode_kernel = 3
-    else:
+    elif the_width > 2 and the_width < 4:
         dilate_kernel = 6
         erode_kernel = 4
 
@@ -382,11 +385,23 @@ def get_overlap_coordinate(location_a, location_b):
             elif value == location_b[0]:
                 if x[index+1] != location_b[2]:
                     overlap_location = [y[1], y[2], x[1], x[2]]
-    if overlap_location:
-        print(overlap_location)
-    else:
-        pass
+    # if overlap_location:
+    #     print(overlap_location)
+    # else:
+    #     pass
     return overlap_location
+
+
+def get_localtions(text_recs, img):
+    locations = []
+    for index in range(len(text_recs)):
+        left = max(min(text_recs[index][0], text_recs[index][4]), 0)
+        top = min(text_recs[index][1], text_recs[index][3])
+        right = min(max(text_recs[index][2], text_recs[index][6]), img.shape[1])
+        bottom = max(text_recs[index][5], text_recs[index][7])
+        location = [top, bottom, left, right]
+        locations.append(location)
+    return locations
 
 
 def test_get_overlap_coordinate():
@@ -401,20 +416,23 @@ def test_get_overlap_coordinate():
     get_overlap_coordinate([600, 650, 900, 950], [700, 750, 1000, 1050])
 
 
-def p_picture(text_recs, img, frameNum, videoName, outputPath):
+def p_picture(text_recs, is_scroll, img, frameNum, videoName, outputPath):
     subtitle_height_list = []
     canny2_img_list = []
     output_list = []
-    location_list = []
+
+    location_list = get_localtions(text_recs, img)
+
     for index in range(len(text_recs)):
-        left = max(min(text_recs[index][0], text_recs[index][4]), 0)
-        top = min(text_recs[index][1], text_recs[index][3])
-        right = min(max(text_recs[index][2], text_recs[index][6]), img.shape[1])
-        bottom = max(text_recs[index][5], text_recs[index][7])
-        location = [top, bottom, left, right]
-        location_list.append(location)
-        output, subtitle_height, canny2_img = main(left, top, right, bottom, img, videoName, outputPath, frameNum, index)
+        top = location_list[index][0]
+        bottom = location_list[index][1]
+        left = location_list[index][2]
+        right = location_list[index][3]
+
+        output, subtitle_height, canny2_img = main(left, top, right, bottom,
+                                                   img, videoName, outputPath, frameNum, index)
         output_list.append(output)
+
         subtitle_height_list.append(subtitle_height)
         canny2_img_list.append(canny2_img)
 

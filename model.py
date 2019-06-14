@@ -66,7 +66,7 @@ LEFT_BOTTOM_Y_PER = 1
 COUNT_OF_FRAME_WITH_SUBTITLE = 0
 RESULTS_DICT = {}
 COUNT_OF_LOOSE_FRAME = 500  # TODO:finetune
-DIFFERENT_THRESHOLD = 6     # TODO:finetune
+DIFFERENT_THRESHOLD = 6  # TODO:finetune
 
 
 def crnnRec(im, text_recs, ocrMode='keras', adjust=False):
@@ -143,13 +143,13 @@ def sort_box(box):
         text_recs[index, 7] = y4
     """
 
-    box = sorted(box, key=lambda x: sum([x[1]]))    # 按左上角y轴坐标从上到下排序
+    box = sorted(box, key=lambda x: sum([x[1]]))  # 按左上角y轴坐标从上到下排序
     return box
 
 
 # 字幕过滤
-def subtitle_filter(boxes, img_height, img_width,
-                    real_height=None, subtitle_height_list=None, canny_img2_list=None, seq=0, output_process=False):
+def subtitle_filter(boxes, img_height, img_width, real_height,
+                    subtitle_height_list=None, canny_img2_list=None, seq=0, output_process=False):
     # roi限制
     roi_x_per = 0.5
     # 条件收束前字幕大小限制
@@ -166,6 +166,10 @@ def subtitle_filter(boxes, img_height, img_width,
             # 将不满足限制条件的文字框加入到待删除列表中
             if box[0] > img_width * roi_x_per:  # 字幕框最左端出现在屏幕右半边
                 temp.append(index)
+            if (box[5] - box[1]) / real_height < 0.025:     # 字幕框高度较小
+                temp.append(index)
+            if (box[5] - box[1]) / (box[2] - box[0]) > 1.2:     # 字幕框高度与长度比值大于1.2
+                temp.append(index)
 
         boxes = np.delete(boxes, temp, axis=0)
         return sort_box(boxes)
@@ -176,17 +180,23 @@ def subtitle_filter(boxes, img_height, img_width,
                         or subtitle_height > real_height * (HEIGHT_OF_SUBTITLE_FILTER_PER + height_max_delta):
                     if output_process:
                         print("loose restriction")
-                        print("subtitle_height:" + str(subtitle_height) + ", restriction: max:" + str(real_height * (HEIGHT_OF_SUBTITLE_FILTER_PER + height_max_delta)) + " min:" + str(real_height * (HEIGHT_OF_SUBTITLE_FILTER_PER - height_min_delta)))
+                        print("subtitle_height:" + str(subtitle_height) + ", restriction: max:" + str(
+                            real_height * (HEIGHT_OF_SUBTITLE_FILTER_PER + height_max_delta)) + " min:" + str(
+                            real_height * (HEIGHT_OF_SUBTITLE_FILTER_PER - height_min_delta)))
                     temp.append(index)
             else:
-                if abs(subtitle_height/real_height-HEIGHT_OF_SUBTITLE_FILTER_PER) > height_delta_strict \
+                if abs(subtitle_height / real_height - HEIGHT_OF_SUBTITLE_FILTER_PER) > height_delta_strict \
                         or boxes[index][1] < (LEFT_TOP_Y_PER - subtitle_location_y_delta) * img_height \
                         or boxes[index][7] > (LEFT_BOTTOM_Y_PER + subtitle_location_y_delta) * img_height:
                     if output_process:
                         print("tight restriction")
-                        print("subtitle_height:" + str(subtitle_height) + ", restriction: max:" + str(real_height * (HEIGHT_OF_SUBTITLE_FILTER_PER + height_delta_strict)) + " , min:" + str(real_height * (HEIGHT_OF_SUBTITLE_FILTER_PER - height_delta_strict)))
-                        print("boxes top:" + str(boxes[index][1]) + ", restriction: min:" + str((LEFT_TOP_Y_PER - subtitle_location_y_delta) * img_height))
-                        print("boxes bottom:" + str(boxes[index][7]) + ", restriction: max:" + str((LEFT_BOTTOM_Y_PER + subtitle_location_y_delta) * img_height))
+                        print("subtitle_height:" + str(subtitle_height) + ", restriction: max:" + str(
+                            real_height * (HEIGHT_OF_SUBTITLE_FILTER_PER + height_delta_strict)) + " , min:" + str(
+                            real_height * (HEIGHT_OF_SUBTITLE_FILTER_PER - height_delta_strict)))
+                        print("boxes top:" + str(boxes[index][1]) + ", restriction: min:" + str(
+                            (LEFT_TOP_Y_PER - subtitle_location_y_delta) * img_height))
+                        print("boxes bottom:" + str(boxes[index][7]) + ", restriction: max:" + str(
+                            (LEFT_BOTTOM_Y_PER + subtitle_location_y_delta) * img_height))
                     temp.append(index)
 
         boxes = np.delete(boxes, temp, axis=0)
@@ -226,6 +236,43 @@ def crop_img(img, video_name, output_path, boxes, frameNum):
         i = i + 1
 
 
+def delete_overlap_get_scroll_list(real_recs, text_recs, real_img_height):
+    uncertain_scroll = []
+    is_scroll = []
+    delete_recs = []
+
+    # 对于在屏幕下方特定位置的字幕都认为是滚动字幕
+    for i in range(len(real_recs)):
+        if min(real_recs[i][5], real_recs[i][7]) > real_img_height * 0.93 \
+                and min(real_recs[i][1], real_recs[i][3]) > real_img_height * 0.88:
+            uncertain_scroll.append(i)
+
+    for i in range(len(real_recs) - len(uncertain_scroll)):
+        is_scroll.append(False)
+
+    if len(uncertain_scroll) > 1:
+        # TODO:判断重叠，若重叠，去除重叠中最小部分 or 最长的判断为滚动字幕
+        for index, value in enumerate(uncertain_scroll):
+            if index + 1 < len(uncertain_scroll):
+                overlap_coordinate = preprocessing.get_overlap_coordinate(real_recs[value], real_recs[value + 1])
+                # TODO 将两张重叠的拼合成一张(暂时使用去掉最短的)
+                if overlap_coordinate:
+                    print("overlap!!!!!")
+                    if real_recs[value][2] - real_recs[index][0] > real_recs[value + 1][2] - real_recs[value + 1][0]:
+                        delete_recs.append(value + 1)
+                    else:
+                        delete_recs.append(value)
+
+        for i in range(len(uncertain_scroll) - len(delete_recs)):
+            is_scroll.append(True)
+    elif len(uncertain_scroll) == 1:
+        is_scroll.append(True)
+
+    real_recs = np.delete(real_recs, delete_recs, axis=0)
+    text_recs = np.delete(text_recs, delete_recs, axis=0)
+    return is_scroll, real_recs, text_recs
+
+
 def model(img, imgNo, videoName, outputPath, model='keras', adjust=False, output_process=False):
     """
     @@param:img,
@@ -255,7 +302,7 @@ def model(img, imgNo, videoName, outputPath, model='keras', adjust=False, output
 
     # crnn前预处理
     tmp = real_img.copy()
-    preprocessed_img, subtitle_height_list, canny_img2_list = preprocessing.p_picture(real_recs, tmp, imgNo,
+    preprocessed_img, subtitle_height_list, canny_img2_list = preprocessing.p_picture(real_recs, [], tmp, imgNo,
                                                                                       videoName, outputPath)
     if output_process:
         np.savetxt(
@@ -274,14 +321,16 @@ def model(img, imgNo, videoName, outputPath, model='keras', adjust=False, output
     if subtitle_height_list and COUNT_OF_FRAME_WITH_SUBTITLE < COUNT_OF_LOOSE_FRAME:
         index = randint(0, len(subtitle_height_list) - 1)  # 同一帧中检测到多个疑似字幕,则从中随机选择一个进行数据更新
         if subtitle_height_list[index] > min_height_subtitle:
-            HEIGHT_OF_SUBTITLE_FILTER_PER = 0.9 * HEIGHT_OF_SUBTITLE_FILTER_PER + 0.1 * subtitle_height_list[index] / real_img_height
+            HEIGHT_OF_SUBTITLE_FILTER_PER = 0.9 * HEIGHT_OF_SUBTITLE_FILTER_PER + 0.1 * subtitle_height_list[
+                index] / real_img_height
             LEFT_TOP_Y_PER = 0.9 * LEFT_TOP_Y_PER + 0.1 * text_recs[index][1] / resize_im_height
             LEFT_BOTTOM_Y_PER = 0.9 * LEFT_BOTTOM_Y_PER + 0.1 * text_recs[index][7] / resize_im_height
             COUNT_OF_FRAME_WITH_SUBTITLE = COUNT_OF_FRAME_WITH_SUBTITLE + 1
     elif subtitle_height_list and COUNT_OF_FRAME_WITH_SUBTITLE >= COUNT_OF_LOOSE_FRAME:
         index = randint(0, len(subtitle_height_list) - 1)  # 同一帧中检测到多个疑似字幕,则从中随机选择一个进行数据更新
         if subtitle_height_list[index] > min_height_subtitle:
-            HEIGHT_OF_SUBTITLE_FILTER_PER = 0.95 * HEIGHT_OF_SUBTITLE_FILTER_PER + 0.05 * subtitle_height_list[index] / real_img_height
+            HEIGHT_OF_SUBTITLE_FILTER_PER = 0.95 * HEIGHT_OF_SUBTITLE_FILTER_PER + 0.05 * subtitle_height_list[
+                index] / real_img_height
             LEFT_TOP_Y_PER = 0.95 * LEFT_TOP_Y_PER + 0.05 * text_recs[index][1] / resize_im_height
             LEFT_BOTTOM_Y_PER = 0.95 * LEFT_BOTTOM_Y_PER + 0.05 * text_recs[index][7] / resize_im_height
             COUNT_OF_FRAME_WITH_SUBTITLE = COUNT_OF_FRAME_WITH_SUBTITLE + 1
@@ -292,7 +341,9 @@ def model(img, imgNo, videoName, outputPath, model='keras', adjust=False, output
         print("left_bottom_y:" + str(LEFT_BOTTOM_Y_PER))
 
     # 第二次字幕过滤(高度,更精确的纵坐标)
-    text_recs, canny_img2_list = subtitle_filter(text_recs, resize_im_height, resize_im_width, real_img_height, subtitle_height_list, canny_img2_list, seq=1, output_process=output_process)
+    text_recs, canny_img2_list = subtitle_filter(text_recs, resize_im_height, resize_im_width, real_img_height,
+                                                 subtitle_height_list, canny_img2_list, seq=1,
+                                                 output_process=output_process)
     if text_recs is None or len(text_recs) == 0:
         return [], real_img, [], f
 
@@ -335,6 +386,59 @@ def model(img, imgNo, videoName, outputPath, model='keras', adjust=False, output
         break
 
     if output_process:
-        return result, preprocessed_img, real_recs, f
+        return result, preprocessed_img, real_recs, [], f
     else:
-        return result, real_img, real_recs, f
+        return result, real_img, real_recs, [], f
+
+
+def model_news(img, img_no, video_name, output_path, model='keras', adjust=False, output_process=False):
+    real_img = img.copy()
+    real_img_height = real_img.shape[0]
+    real_img_width = real_img.shape[1]
+
+    # ctpn
+    text_recs, drawn_img, img, f = text_detect(img, top=0.5, bottom=1, left=0, right=1)
+
+    resize_im_height = img.shape[0]
+    resize_im_width = img.shape[1]
+
+    # 第一次字幕过滤(位置信息)
+    # TODO:过滤特别小、特别大的字幕和正方形
+    text_recs = subtitle_filter(text_recs, resize_im_height, resize_im_width, real_img_height, seq=0, output_process=output_process)
+    if text_recs is None or len(text_recs) == 0:
+        return [], real_img, [], [], f
+
+    # 获取原图坐标便于预处理
+    real_recs = toRealCoordinate(text_recs, f)
+
+    if output_process:
+        crop_img(real_img, video_name, output_path, real_recs, img_no)
+
+    # 去除滚动字幕中重叠部分中较短的部分，并获取滚动字幕标记
+    is_scroll, real_recs, text_recs = delete_overlap_get_scroll_list(real_recs, text_recs, real_img_height)
+
+    # crnn前预处理
+    tmp = real_img.copy()
+    preprocessed_img, subtitle_height_list, canny_img2_list = preprocessing.p_picture(real_recs, is_scroll, tmp, img_no,
+                                                                                      video_name, output_path)
+
+    if output_process:
+        np.savetxt(
+            os.path.join(output_path,
+                         "subtitle_height_{}_{}.txt".format(video_name.split('/')[-1].split('.')[0], img_no)),
+            subtitle_height_list, fmt='%d')
+
+    # 送入CRNN检测
+    img, f = resize_im(preprocessed_img, scale=Config.SCALE, max_scale=Config.MAX_SCALE)
+    result = crnnRec(img, text_recs, model, adjust=adjust)
+    # 去除检测结果最前端非中文字符,出现重复字符的彻底解决方法应为重新训练
+    for key in result:
+        pattern = re.compile(u"^[^\u4e00-\u9fa5]+")
+        result[key][1] = re.sub(pattern, '', result[key][1])
+
+    # TODO:根据位置对比是否同一字幕，进行投票
+
+    if output_process:
+        return result, preprocessed_img, real_recs, is_scroll, f
+    else:
+        return result, real_img, real_recs, is_scroll, f
