@@ -60,11 +60,13 @@ class Queue():
 
 # global variables
 CANNY_IMG_QUEUE = Queue(2)
+RECS_QUEUE = Queue(2)
 HEIGHT_OF_SUBTITLE_FILTER_PER = 0.04
 LEFT_TOP_Y_PER = 0.7
 LEFT_BOTTOM_Y_PER = 1
 COUNT_OF_FRAME_WITH_SUBTITLE = 0
 RESULTS_DICT = {}
+RESULTS_LIST = []
 COUNT_OF_LOOSE_FRAME = 500  # TODO:finetune
 DIFFERENT_THRESHOLD = 6  # TODO:finetune
 
@@ -115,9 +117,9 @@ def dumpRotateImage(img, degree, pt1, pt2, pt3, pt4):
     height, width = img.shape[:2]
     heightNew = int(width * fabs(sin(radians(degree))) + height * fabs(cos(radians(degree))))
     widthNew = int(height * fabs(sin(radians(degree))) + width * fabs(cos(radians(degree))))
-    matRotation = cv2.getRotationMatrix2D((width / 2, height / 2), degree, 1)
-    matRotation[0, 2] += (widthNew - width) / 2
-    matRotation[1, 2] += (heightNew - height) / 2
+    matRotation = cv2.getRotationMatrix2D((width * 0.5, height * 0.5), degree, 1)
+    matRotation[0, 2] += (widthNew - width) * 0.5
+    matRotation[1, 2] += (heightNew - height) * 0.5
     imgRotation = cv2.warpAffine(img, matRotation, (widthNew, heightNew), borderValue=(255, 255, 255))
     pt1 = list(pt1)
     pt3 = list(pt3)
@@ -166,10 +168,11 @@ def subtitle_filter(boxes, img_height, img_width, real_height,
             # 将不满足限制条件的文字框加入到待删除列表中
             if box[0] > img_width * roi_x_per:  # 字幕框最左端出现在屏幕右半边
                 temp.append(index)
-            if (box[5] - box[1]) / real_height < 0.025:     # 字幕框高度较小
+            if (box[5] - box[1]) / real_height < 0.045:  # 字幕框高度较小 TODO:finetune
                 temp.append(index)
-            if (box[5] - box[1]) / (box[2] - box[0]) > 1.2:     # 字幕框高度与长度比值大于1.2
+            if (box[5] - box[1]) / (box[2] - box[0]) > 1:  # 字幕框高度与长度比值大于1 TODO:finetune
                 temp.append(index)
+            # TODO: 除了滚动字幕外出现在中间的字幕框也去掉(离散框)
 
         boxes = np.delete(boxes, temp, axis=0)
         return sort_box(boxes)
@@ -236,41 +239,47 @@ def crop_img(img, video_name, output_path, boxes, frameNum):
         i = i + 1
 
 
-def delete_overlap_get_scroll_list(real_recs, text_recs, real_img_height):
+def delete_overlap_get_scroll_list(text_recs, resize_im_height, f):
+    no_overlap = []
     uncertain_scroll = []
     is_scroll = []
-    delete_recs = []
+    result_text_recs = []
 
-    # 对于在屏幕下方特定位置的字幕都认为是滚动字幕
-    for i in range(len(real_recs)):
-        if min(real_recs[i][5], real_recs[i][7]) > real_img_height * 0.93 \
-                and min(real_recs[i][1], real_recs[i][3]) > real_img_height * 0.88:
+    for i in range(len(text_recs)):
+        if min(text_recs[i][5], text_recs[i][7]) > resize_im_height * 0.93 and min(text_recs[i][1], text_recs[i][3]) > resize_im_height * 0.88:
             uncertain_scroll.append(i)
 
-    for i in range(len(real_recs) - len(uncertain_scroll)):
+    for i in range(len(text_recs) - len(uncertain_scroll)):
         is_scroll.append(False)
+        result_text_recs.append(text_recs[i])
 
     if len(uncertain_scroll) > 1:
-        # TODO:判断重叠，若重叠，去除重叠中最小部分 or 最长的判断为滚动字幕
-        for index, value in enumerate(uncertain_scroll):
-            if index + 1 < len(uncertain_scroll):
-                overlap_coordinate = preprocessing.get_overlap_coordinate(real_recs[value], real_recs[value + 1])
-                # TODO 将两张重叠的拼合成一张(暂时使用去掉最短的)
-                if overlap_coordinate:
-                    print("overlap!!!!!")
-                    if real_recs[value][2] - real_recs[index][0] > real_recs[value + 1][2] - real_recs[value + 1][0]:
-                        delete_recs.append(value + 1)
-                    else:
-                        delete_recs.append(value)
+        no_overlap.append(text_recs[uncertain_scroll[0]])
 
-        for i in range(len(uncertain_scroll) - len(delete_recs)):
+        for _, value in enumerate(uncertain_scroll):
+            for i, rec in enumerate(no_overlap):
+                overlap_coordinate = preprocessing.get_overlap_coordinate(rec, text_recs[value])
+                if overlap_coordinate:
+                    print("overlap!!!")
+                    # 合并重叠字幕，更新rec到no_scroll
+                    union = preprocessing.get_union_coordinate(rec, text_recs[value])
+                    no_overlap[i] = [union[2], union[0], union[3], union[0], union[2], union[1], union[3], union[1]]
+                    break
+            if not overlap_coordinate:
+                no_overlap.append(text_recs[value])
+
+        for i in range(len(no_overlap)):
             is_scroll.append(True)
+
     elif len(uncertain_scroll) == 1:
+        no_overlap.append(text_recs[uncertain_scroll[0]])
         is_scroll.append(True)
 
-    real_recs = np.delete(real_recs, delete_recs, axis=0)
-    text_recs = np.delete(text_recs, delete_recs, axis=0)
-    return is_scroll, real_recs, text_recs
+    result_text_recs.extend(no_overlap)
+    result_text_recs = sorted(result_text_recs, key=lambda x: sum([x[1]]))
+    result_real_recs = toRealCoordinate(result_text_recs, f)
+
+    return is_scroll, result_real_recs, result_text_recs
 
 
 def model(img, imgNo, videoName, outputPath, model='keras', adjust=False, output_process=False):
@@ -316,7 +325,7 @@ def model(img, imgNo, videoName, outputPath, model='keras', adjust=False, output
     global COUNT_OF_FRAME_WITH_SUBTITLE
     global RESULTS_DICT
 
-    min_height_subtitle = 0.028 * real_img_height
+    min_height_subtitle = 0.028 * real_img_height  # TODO:finetune
 
     if subtitle_height_list and COUNT_OF_FRAME_WITH_SUBTITLE < COUNT_OF_LOOSE_FRAME:
         index = randint(0, len(subtitle_height_list) - 1)  # 同一帧中检测到多个疑似字幕,则从中随机选择一个进行数据更新
@@ -357,7 +366,7 @@ def model(img, imgNo, videoName, outputPath, model='keras', adjust=False, output
             CANNY_IMG_QUEUE.dequeue()
         CANNY_IMG_QUEUE.enqueue(canny_img2_list)
 
-    # 比较当前帧与上一帧,判断是否为统一字幕,若不是,清空结果列表
+    # 比较当前帧与上一帧,判断是否为同一字幕,若不是,清空结果列表
     if CANNY_IMG_QUEUE.is_full():
         difference = get_img_difference(CANNY_IMG_QUEUE.queue[0][0], CANNY_IMG_QUEUE.queue[1][0])
         if output_process:
@@ -403,7 +412,6 @@ def model_news(img, img_no, video_name, output_path, model='keras', adjust=False
     resize_im_width = img.shape[1]
 
     # 第一次字幕过滤(位置信息)
-    # TODO:过滤特别小、特别大的字幕和正方形
     text_recs = subtitle_filter(text_recs, resize_im_height, resize_im_width, real_img_height, seq=0, output_process=output_process)
     if text_recs is None or len(text_recs) == 0:
         return [], real_img, [], [], f
@@ -415,12 +423,11 @@ def model_news(img, img_no, video_name, output_path, model='keras', adjust=False
         crop_img(real_img, video_name, output_path, real_recs, img_no)
 
     # 去除滚动字幕中重叠部分中较短的部分，并获取滚动字幕标记
-    is_scroll, real_recs, text_recs = delete_overlap_get_scroll_list(real_recs, text_recs, real_img_height)
+    is_scroll, real_recs, text_recs = delete_overlap_get_scroll_list(text_recs, resize_im_height, f)
 
     # crnn前预处理
     tmp = real_img.copy()
-    preprocessed_img, subtitle_height_list, canny_img2_list = preprocessing.p_picture(real_recs, is_scroll, tmp, img_no,
-                                                                                      video_name, output_path)
+    preprocessed_img, subtitle_height_list, canny_img2_list = preprocessing.p_picture(real_recs, is_scroll, tmp, img_no, video_name, output_path)
 
     if output_process:
         np.savetxt(
@@ -436,7 +443,93 @@ def model_news(img, img_no, video_name, output_path, model='keras', adjust=False
         pattern = re.compile(u"^[^\u4e00-\u9fa5]+")
         result[key][1] = re.sub(pattern, '', result[key][1])
 
-    # TODO:根据位置对比是否同一字幕，进行投票
+    # 根据位置对比是否同一字幕，进行投票
+    # 去除is_scroll为True的字幕框
+    no_scroll_result = []
+    no_scroll_canny_list = []
+    no_scroll_recs = []
+    for i in result:
+        if not is_scroll[i]:
+            no_scroll_result.append(result[i])
+            no_scroll_canny_list.append(canny_img2_list[i])
+            no_scroll_recs.append(real_recs[i])
+
+    # 将当前帧的canny2图像,real_recs写入队列
+    if canny_img2_list.__len__() > 0:
+        if CANNY_IMG_QUEUE.is_full():
+            CANNY_IMG_QUEUE.dequeue()
+            RECS_QUEUE.dequeue()
+        CANNY_IMG_QUEUE.enqueue(no_scroll_canny_list)
+        RECS_QUEUE.enqueue(no_scroll_recs)
+
+    global RESULTS_LIST
+    result_dict = {}
+    new_result_list = []
+    is_match = True
+    distance_restrict_per = 0.01
+    max_distance = sqrt(real_img_height ** 2 + real_img_width ** 2)
+
+    if CANNY_IMG_QUEUE.is_full() and RESULTS_LIST:  # 队列满，则说明队列中存有前后两帧的canny_list，可进行相似对比
+        for i, curr_canny2 in enumerate(CANNY_IMG_QUEUE.queue[1]):  # 遍历当前帧的canny_list
+            # 计算文本框中心点坐标
+            curr_recs = RECS_QUEUE.queue[1][i]
+            curr_center_x = (curr_recs[0] + curr_recs[6]) * 0.5
+            curr_center_y = (curr_recs[1] + curr_recs[7]) * 0.5
+            for j, last_canny2 in enumerate(CANNY_IMG_QUEUE.queue[0]):  # 遍历前一帧的canny_list
+                # 计算文本框中心点
+                last_recs = RECS_QUEUE.queue[0][j]
+                last_center_x = (last_recs[0] + last_recs[6]) * 0.5
+                last_center_y = (last_recs[1] + last_recs[7]) * 0.5
+                # 计算前后两帧中两个文本框中心点的距离
+                distance = sqrt((last_center_x - curr_center_x) ** 2 + (last_center_y - curr_center_y) ** 2)
+
+                if distance < distance_restrict_per * max_distance:  # 距离小于阈值，能匹配到
+                    difference = get_img_difference(CANNY_IMG_QUEUE.queue[0][j], CANNY_IMG_QUEUE.queue[1][i])
+                    if output_process:
+                        print("the difference between", str(img_no), "_", str(i), "and ", str(img_no - 1), "_", str(j), ":", str(difference))
+                    if difference >= DIFFERENT_THRESHOLD:  # 匹配到，但是计算相似度的结果说明两个字幕不同
+                        if output_process:
+                            print(str(img_no), "_", str(i), " different from", str(img_no - 1), "_", str(j))
+                        # 去掉上一帧同位置的投票结果，并新增当前帧结果
+                        new_result_list.append({no_scroll_result[i][1]: 1})
+                    else:  # 匹配到，计算相似度的结果说明两个字幕相同
+                        # 更新位置（y轴坐标？）（key），结果（value）+1【{result1:times1,result2:times2,...},{result1:times1,result2:times2,...},】
+                        result_dict = RESULTS_LIST[j]
+
+                        if no_scroll_result[i][1] in result_dict:
+                            result_dict[no_scroll_result[i][1]] = int(result_dict[no_scroll_result[i][1]]) + 1
+                        else:
+                            result_dict[no_scroll_result[i][1]] = 1
+
+                        new_result_list.append(result_dict.copy())
+                        result_dict.clear()
+                    is_match = True
+                    break
+                else:  # 距离大于阈值，没匹配到
+                    is_match = False
+                    pass
+            # j遍历后都未被匹配，新建一个结果
+            if not is_match:
+                result_dict[no_scroll_result[i][1]] = 1
+                new_result_list.append(result_dict.copy())
+                result_dict.clear()
+                is_match = True
+        # 用当前帧结果替代前一帧结果以去除结果中未被比较的项，只保留本帧中出现字幕位置的结果
+        RESULTS_LIST = new_result_list.copy()
+        new_result_list.clear()
+    else:  # 队列未满，则说明这是第一帧，需要初始化RESULT_LIST
+        for rlt in no_scroll_result:
+            RESULTS_LIST.append({rlt[1]: 1})
+    if output_process:
+        print(RESULTS_LIST)
+
+    # 输出出现次数最多的结果
+    for index, data in enumerate(RESULTS_LIST):
+        for k in sorted(data, key=data.__getitem__, reverse=True):
+            if output_process:
+                print("result:" + k + ", times:" + str(data[k]))
+            result[int(index)][1] = k
+            break
 
     if output_process:
         return result, preprocessed_img, real_recs, is_scroll, f

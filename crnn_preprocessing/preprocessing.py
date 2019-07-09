@@ -392,6 +392,24 @@ def get_overlap_coordinate(location_a, location_b):
     return overlap_location
 
 
+def get_union_coordinate(location_a, location_b):
+    x = [location_a[0], location_a[2], location_b[0], location_b[2]]
+    y = [location_a[1], location_a[5], location_b[1], location_b[5]]
+    union_location = []
+    x.sort()
+    y.sort()
+    if y[1] != location_a[5]:
+        for index, value in enumerate(x):
+            if value == location_a[0]:
+                if x[index+1] != location_a[2]:
+                    union_location = [y[0], y[3], x[0], x[3]]
+            elif value == location_b[0]:
+                if x[index+1] != location_b[2]:
+                    union_location = [y[0], y[3], x[0], x[3]]
+
+    return union_location
+
+
 def get_localtions(text_recs, img):
     locations = []
     for index in range(len(text_recs)):
