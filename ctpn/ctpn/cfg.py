@@ -25,7 +25,7 @@ class Config:
     SCALE=900                       # min{reshape[0],reshape[1]}>=SCALE ||
     MAX_SCALE=1500                  # max{reshape[0],reshape[1]}<=MAX_SCALE
     TEXT_PROPOSALS_WIDTH=16         # width of proposals
-    MIN_RATIO=0.5                   # min width/height ratio
+    MIN_RATIO=0.5                   # min width/height ratio（0.5:height>32)
     LINE_MIN_SCORE=0.9              #
     TEXT_LINE_NMS_THRESH=0.3        # 非极大值抑制阈值?
     MAX_HORIZONTAL_GAP=50           # 水平方向最大间隔（框与框之间的合并）

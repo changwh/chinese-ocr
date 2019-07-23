@@ -18,32 +18,6 @@ def cv2_img_add_text(img, text, left, top, text_color=(0, 255, 0), text_size=20)
     return cv2.cvtColor(np.asarray(img), cv2.COLOR_RGB2BGR)
 
 
-# 从图片读取 TODO:model修改后可能需要调试
-def start_img(input_path_list, output_path):
-    if os.path.exists(output_path):
-        shutil.rmtree(output_path)
-    os.makedirs(output_path)
-
-    for img_name in input_path_list:
-        print(img_name)
-        img = cv2.imread(img_name)
-        t = time.time()
-
-        result, img, real_recs, f = model.model(img, 0, img_name, output_path, model='crnn', output_process=True)
-        print("Frame number:{}, It takes time:{}s".format(0, time.time() - t))
-        print("---------------------------------------")
-        print("识别结果:")
-
-        for key in result:
-            print(result[key][1])
-
-            # 在视频中嵌入识别结果
-            img = cv2_img_add_text(img, result[key][1], int(result[key][0][0] / f), int(result[key][0][1] / f) - 120,
-                                   text_color=(0, 255, 0), text_size=50)
-
-    print(output_path)
-
-
 def start_video(input_path_list, output_path, start_frame=None, end_frame=None, stride=1, output_process=False):
     if os.path.exists(output_path):
         shutil.rmtree(output_path)
@@ -85,8 +59,7 @@ def start_video(input_path_list, output_path, start_frame=None, end_frame=None, 
                 frame_num += 1
                 continue
 
-            result, frame, real_recs, is_scroll, f = model.model_news(frame, frame_num, video_name, output_path,
-                                                      model='crnn', output_process=output_process)
+            result, frame, real_recs, f = model.model(frame, frame_num, video_name, output_path, output_process=output_process)
             print("Frame number:{}, It takes time:{}s".format(frame_num, time.time() - t))
             print("---------------------------------------")
             print("识别结果:")
@@ -95,14 +68,9 @@ def start_video(input_path_list, output_path, start_frame=None, end_frame=None, 
                 print(result[key][1])
 
                 # 在视频中嵌入识别结果
-                if is_scroll[key] is False:
-                    frame = cv2_img_add_text(frame, result[key][1], int(result[key][0][0] / f),
-                                         int(result[key][0][1] / f) - 120,
-                                         text_color=(0, 255, 0), text_size=40)
-                else:
-                    frame = cv2_img_add_text(frame, result[key][1], int(result[key][0][0] / f),
-                                         int(result[key][0][1] / f) - 120,
-                                         text_color=(255, 0, 0), text_size=40)
+                frame = cv2_img_add_text(frame, result[key][1], int(result[key][0][0] / f),
+                                     int(result[key][0][1] / f) - 120,
+                                     text_color=(0, 255, 0), text_size=40)
 
             # 将加框后图片拼接成视频
             videoWriter.write(frame)
@@ -116,9 +84,9 @@ def start_video(input_path_list, output_path, start_frame=None, end_frame=None, 
 
 
 if __name__ == '__main__':
-    start_video(["/home/user/PycharmProjects/text-detection-ctpn/data/news/1.mp4"],
-                "/home/user/mytest22",
-                start_frame=2000, end_frame=2500, stride=25, output_process=True)  # news 2-45605 overlap error 2-2722
+    start_video(["/home/user/PycharmProjects/text-detection-ctpn/data/video2/2.mp4"],
+                "/home/user/mytest25",
+                start_frame=5325, end_frame=7250, output_process=True)  # news 2-45605 overlap error 2-2722
                 # 1: 5500-7250
                 # 2: 5325-7250
                 # 3: 3875-6275
