@@ -353,13 +353,13 @@ def main(left, top, right, bottom, img, videoName, outputPath, frameNum, index):
         dilate_kernel = 5
         erode_kernel = 3
     elif the_width == 4:
-        dilate_kernel = 6
+        dilate_kernel = 7
         erode_kernel = 4
     elif the_width == 5:
         dilate_kernel = 8
         erode_kernel = 5
     elif the_width <= 2:
-        dilate_kernel = 3
+        dilate_kernel = 4
         erode_kernel = 2
     elif the_width >= 6:
         dilate_kernel = 9
