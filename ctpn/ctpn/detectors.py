@@ -47,7 +47,7 @@ class TextDetector:
             keep_inds=nms(text_lines, cfg.TEXT_LINE_NMS_THRESH)
             text_lines=text_lines[keep_inds]
 
-        return text_lines
+        return text_lines, text_proposals
 
     def filter_boxes(self, boxes):
         heights=boxes[:, 3]-boxes[:, 1]+1

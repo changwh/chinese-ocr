@@ -256,11 +256,11 @@ def delete_overlap_get_scroll_list(text_recs, resize_im_height, f):
     if len(uncertain_scroll) > 1:
         no_overlap.append(text_recs[uncertain_scroll[0]])
 
-        for _, value in enumerate(uncertain_scroll):
+        for _, value in enumerate(uncertain_scroll[1:]):
             for i, rec in enumerate(no_overlap):
                 overlap_coordinate = preprocessing.get_overlap_coordinate(rec, text_recs[value])
                 if overlap_coordinate:
-                    print("overlap!!!")
+                    print("overlap!!!\t", overlap_coordinate)
                     # 合并重叠字幕，更新rec到no_scroll
                     union = preprocessing.get_union_coordinate(rec, text_recs[value])
                     no_overlap[i] = [union[2], union[0], union[3], union[0], union[2], union[1], union[3], union[1]]
@@ -416,14 +416,12 @@ def model_news(img, img_no, video_name, output_path, model='keras', adjust=False
     if text_recs is None or len(text_recs) == 0:
         return [], real_img, [], [], f
 
-    # 获取原图坐标便于预处理
-    real_recs = toRealCoordinate(text_recs, f)
+    # 去除滚动字幕中重叠部分中较短的部分，并获取滚动字幕标记
+    is_scroll, real_recs, text_recs = delete_overlap_get_scroll_list(text_recs, resize_im_height, f)
+    # TODO:画出重叠区域的框，验证算法是否正确
 
     if output_process:
         crop_img(real_img, video_name, output_path, real_recs, img_no)
-
-    # 去除滚动字幕中重叠部分中较短的部分，并获取滚动字幕标记
-    is_scroll, real_recs, text_recs = delete_overlap_get_scroll_list(text_recs, resize_im_height, f)
 
     # crnn前预处理
     tmp = real_img.copy()
@@ -444,7 +442,7 @@ def model_news(img, img_no, video_name, output_path, model='keras', adjust=False
         result[key][1] = re.sub(pattern, '', result[key][1])
 
     # 根据位置对比是否同一字幕，进行投票
-    # 去除is_scroll为True的字幕框
+    # 去除is_scroll为True的字幕框，不进行投票
     no_scroll_result = []
     no_scroll_canny_list = []
     no_scroll_recs = []
@@ -493,14 +491,12 @@ def model_news(img, img_no, video_name, output_path, model='keras', adjust=False
                         # 去掉上一帧同位置的投票结果，并新增当前帧结果
                         new_result_list.append({no_scroll_result[i][1]: 1})
                     else:  # 匹配到，计算相似度的结果说明两个字幕相同
-                        # 更新位置（y轴坐标？）（key），结果（value）+1【{result1:times1,result2:times2,...},{result1:times1,result2:times2,...},】
-                        result_dict = RESULTS_LIST[j]
-
-                        if no_scroll_result[i][1] in result_dict:
+                        # 更新位置（按y轴坐标进行排序写入list），结果（value）+1[{result1:times1,result2:times2,...},{result1:times1,result2:times2,...},...]
+                        result_dict = RESULTS_LIST[j]   # 读取该文本框在前一帧中的投票结果
+                        if no_scroll_result[i][1] in result_dict:   # 该结果之前已存在，数值+1
                             result_dict[no_scroll_result[i][1]] = int(result_dict[no_scroll_result[i][1]]) + 1
-                        else:
+                        else:   # 该结果之前不存在，新增一个投票项，数值为1
                             result_dict[no_scroll_result[i][1]] = 1
-
                         new_result_list.append(result_dict.copy())
                         result_dict.clear()
                     is_match = True
