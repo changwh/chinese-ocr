@@ -5,6 +5,7 @@ import sys
 import os
 import random
 from . import clean_image
+from .v2.final import main as main_v2
 
 # import natsort
 
@@ -447,7 +448,7 @@ def p_picture(text_recs, is_scroll, img, frameNum, videoName, outputPath):
         left = location_list[index][2]
         right = location_list[index][3]
 
-        output, subtitle_height, canny2_img = main(left, top, right, bottom,
+        output, subtitle_height, canny2_img = main_v2(left, top, right, bottom,
                                                    img, videoName, outputPath, frameNum, index)
         output_list.append(output)
 

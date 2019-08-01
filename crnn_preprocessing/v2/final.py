@@ -1,15 +1,18 @@
   #coding=utf-8
 import numpy as np
 import random
-import time
+# import time
 import cv2 as cv
 import copy
 import os
+import sys
 import natsort
-from .clean_image import wash_candy_picture
+from .clean_image import wash_canny_picture
 from .news_function import news_procress
 from .choose_color import conculate_proportion_v3
-np.set_printoptions(threshold=np.nan)
+# np.set_printoptions(threshold=np.nan)
+np.set_printoptions(threshold=sys.maxsize)
+
 from matplotlib import pyplot as plt
 
 def dilate_demo(img):
@@ -144,7 +147,7 @@ def fit(i, j, img):
 def convert_demo(image):
     height, width, channels = image.shape
     print("width:%s,height:%s,channels:%s" % (width, height, channels))
- 
+
     for row in range(height):
         for list in range(width):
             for c in range(channels):
@@ -190,7 +193,7 @@ def get_the_width(gray_image, candy_img2):
                 the_width_list[v] = the_width
                 v = v+1
             index = index + 1
-            
+
         counts = np.bincount(the_width_list)
         final_width = np.argmax(counts)
         y = 0
@@ -285,16 +288,17 @@ def creat_random(candy_img2, num,list1):
 
     return 0
 
-def main(left, top, right, bottom, picture_name):
-	
-    
+def main(left, top, right, bottom, img, videoName, outputPath, frameNum, index):
+
+
     # left = 680
     # top = 600
     # right = 1100
     # bottom = 660w
     # picture_name = '900'
-    start = time.clock()
-    img = cv.imread( picture_name+'.jpg')
+    base_name = videoName.split('/')[-1]
+    # start = time.time()
+    # img = cv.imread( picture_name+'.jpg')
     roi_real = img[top:bottom, left:right]
     roi = copy.deepcopy(roi_real)
 
@@ -304,36 +308,33 @@ def main(left, top, right, bottom, picture_name):
     gray_image = copy.deepcopy(gray_image_real)
     # cv.imshow('gray_image', gray_image)
 
-    check_out_value, thresh_cc = conculate_proportion_v3(roi_real,'the_whole_test')  #0.4
-    
+    check_out_value, thresh_cc = conculate_proportion_v3(roi_real)  #0.4
 
+    picture_name = str(base_name)+'_'+str(frameNum)+'_'+str(index)
 
-    if '2' == str(check_out_value):
-        print(picture_name +' is without background color! And it is white')
+    # 边缘检测得到边缘图片
+    canny_img = cv.Canny(gray_image, 40, 120)  # 40 120
+    cv.imwrite(os.path.join(outputPath, "cropped_pic_{}_{}".format(base_name.split('.')[0], frameNum),
+                            "1_canny_{}_{}_{}.jpg".format(base_name.split('.')[0], frameNum, index)), canny_img)
 
-
-
-    if '1' == str(check_out_value):
-        print(picture_name +' is without background color!And it is not white')
-
-
-
+    # if '2' == str(check_out_value):
+    #     print(picture_name +' is without background color! And it is white')
+    #
+    # if '1' == str(check_out_value):
+    #     print(picture_name +' is without background color!And it is not white')
 
     if '0' == str(check_out_value):
-        print(picture_name + ' is with background color!')
+        # print(picture_name + ' is with background color!')
         im_at_mean = cv.adaptiveThreshold(gray_image, 255, cv.ADAPTIVE_THRESH_MEAN_C, cv.THRESH_BINARY, 5, 10)
-        cv.imshow('ss',im_at_mean)
-        if cv.waitKey(0) ==ord('q'):
-            pass
+        # cv.imshow('ss',im_at_mean)
+        # if cv.waitKey(0) ==ord('q'):
+        #     pass
+
+        return roi_real, -1, canny_img
 
 
-        return 0
-
-
-
-    #边缘检测得到边缘图片
     # candy_img = cv.Canny(roi, 40, 120)  #40 120
-    candy_img = cv.Canny(gray_image, 40, 120)  #40 120
+    # candy_img = cv.Canny(gray_image, 40, 120)  #40 120
     # cv.imshow('start', candy_img)
     # cv.imwrite('fotk.jpg',candy_img)
 
@@ -346,7 +347,7 @@ def main(left, top, right, bottom, picture_name):
     # Is_roll = True
     Is_roll = False
     if (Is_roll == True):
-        img2_0, line_num = news_procress(candy_img, roi)
+        img2_0, line_num = news_procress(canny_img, roi)
         # left = left+line_num
         return 0
 
@@ -356,32 +357,39 @@ def main(left, top, right, bottom, picture_name):
     if '2' == str(check_out_value):
         #阈值处理
         ret,thresh1 = cv.threshold(gray_image,200,255,cv.THRESH_BINARY)
-    # cv.imshow('thresh1!', thresh1) 
+    # cv.imshow('thresh1!', thresh1)
     # cv.imwrite('mm.jpg', thresh1)
+    cv.imwrite(os.path.join(outputPath, "cropped_pic_{}_{}".format(base_name.split('.')[0], frameNum),
+                            "2_thresh1_{}_{}_{}.jpg".format(base_name.split('.')[0], frameNum, index)), thresh1)
 
-
-    #膨胀 
+    #膨胀
     thresh2 = dilate_demo(thresh1)
     # cv.imshow('dilate_demo', thresh2)
+    cv.imwrite(os.path.join(outputPath, "cropped_pic_{}_{}".format(base_name.split('.')[0], frameNum),
+                            "3_dilate_{}_{}_{}.jpg".format(base_name.split('.')[0], frameNum, index)), thresh2)
 
-    candy_img = cv.cvtColor(candy_img, cv.COLOR_GRAY2BGR)
-    candy_img2 = precess(thresh2,candy_img)  #0.2s
+    canny_img = cv.cvtColor(canny_img, cv.COLOR_GRAY2BGR)
+    canny_img2 = precess(thresh2,canny_img)  #0.2s
+
 
     # candy_img2 = precess_2(candy_img2)
     # cv.imshow('gray_image', gray_image)
     # cv.imshow('candy 2-1', candy_img2)
-
+    # print gray_image
 
     if '1' == str(check_out_value):
         gray_image = erode_demo(thresh_cc, 3)
-        # cv.imshow('thresh1!', gray_image) 
+        # cv.imshow('thresh1!', gray_image)
 
-    the_width = get_the_width(gray_image, candy_img2) #0.25s
+    the_width = get_the_width(gray_image, canny_img2) #0.25s
 
 
     #去除上下两边的canny噪声
-    candy_img2, num = wash_candy_picture(candy_img2)
-    cv.imshow('candy 2-2', candy_img2)
+    canny_img2, subtitle_height = wash_canny_picture(canny_img2)
+    cv.imwrite(os.path.join(outputPath, "cropped_pic_{}_{}".format(base_name.split('.')[0], frameNum),
+                            "4_canny2_{}_{}_{}.jpg".format(base_name.split('.')[0], frameNum, index)), canny_img2)
+
+    # cv.imshow('candy 2-2', candy_img2)
     # cv.imwrite(picture_name+'candy 2-2.jpg', candy_img2)
 
     #先判断是否正确，the_width=30说明预知检测出现了问题，需要反色
@@ -390,16 +398,27 @@ def main(left, top, right, bottom, picture_name):
         # cv.imshow('ss',gray_image)
         # the_width = get_the_width(gray_image, candy_img2)
 
-    if the_width >= 4:
-        dilate_kernel = 13
+    # print('The width is: ' + str(the_width))
+
+    # TODO:需要通过测试获得更多的参数
+    if the_width >= 6:
+        dilate_kernel = 12
         erode_kernel = 10
-    else:
+    if the_width >= 4 and the_width < 6:
+        dilate_kernel = 7
+        erode_kernel = 5
+    elif the_width <= 2:
+        dilate_kernel = 4
+        erode_kernel = 3
+    elif the_width > 2 and the_width < 4:
         dilate_kernel = 6
         erode_kernel = 4
-    print('The width is: ' + str(the_width))
 
-    step1 = dilate_demo2(candy_img2, dilate_kernel)
+    step1 = dilate_demo2(canny_img2, dilate_kernel)
     step2 = erode_demo(step1, erode_kernel)
+    cv.imwrite(os.path.join(outputPath, "cropped_pic_{}_{}".format(base_name.split('.')[0], frameNum),
+                            "5_erode_{}_{}_{}.jpg".format(base_name.split('.')[0], frameNum, index)), step2)
+
     # cv.imshow('step1', step1)
     # cv.imshow('step2', step2)
     # cv.imwrite('ss.jpg',step2)
@@ -408,16 +427,20 @@ def main(left, top, right, bottom, picture_name):
     # cv.imshow('final', output)
 
     convert(output) #0.09
- 
+
+    cv.imwrite(os.path.join(outputPath, "cropped_pic_{}_{}".format(base_name.split('.')[0], frameNum),
+                            "6_output_{}_{}_{}.jpg".format(base_name.split('.')[0], frameNum, index)), output)
+
     # cv.imwrite('final.jpg',output)
-    img[top:bottom, left:right] = output
+    # img[top:bottom, left:right] = output
     # cv.imshow('final!!!!!', img)
     # cv.imwrite(picture_name+'-final.jpg', img)
-    end = (time.clock() - start)
-    print("Time used:",end)
+    # end = (time.time() - start)
+    # print("Time used:",end)
 
-    if cv.waitKey(0) ==ord('q'):
-        pass
+    # if cv.waitKey(0) ==ord('q'):
+    #     pass
+    return output, subtitle_height, canny_img2
 
 
 if __name__ == '__main__':
@@ -428,9 +451,9 @@ if __name__ == '__main__':
     # bottom = 680
     left = 0
     top = 0
-    right = 706
-    bottom = 114
-    picture_name = '104'
+    right = 740
+    bottom = 136
+    picture_name = '109'
 
     main(left, top, right, bottom, picture_name)
 

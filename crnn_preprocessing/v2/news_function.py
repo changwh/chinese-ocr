@@ -1,9 +1,11 @@
 #coding=utf-8
 import numpy as np
 import cv2 as cv
+import sys
 import os
 import natsort
-np.set_printoptions(threshold=np.nan)
+# np.set_printoptions(threshold=np.nan)
+np.set_printoptions(threshold=sys.maxsize)
 from matplotlib import pyplot as plt
 
 #将图片投影到y轴
@@ -52,7 +54,7 @@ def project_x(img):
     # plt.show()
     return list_col
 
-
+# 分离滚动字幕前的固定字幕
 def news_procress(img, original_img):
     row ,col =img.shape
 
@@ -82,7 +84,7 @@ def news_procress(img, original_img):
 
         if j>col:
             success = False
-            print 'There is no line between two boxes!'
+            print('There is no line between two boxes!')
             line_num = 0
     if line_num != 0:
         img1_0, img1_1 = separate_picture(original_img, line_num)

@@ -22,9 +22,9 @@ def conculate_proportion_v1(img):
     row = gray_image_real.shape[0]
     col = gray_image_real.shape[1]
 
-    row_start = row/8
+    row_start = row//8
     row_end = row_start*7
-    col_start = col/8
+    col_start = col//8
     col_end = col_start*7
     
     the_list = np.arange(8)
@@ -34,7 +34,7 @@ def conculate_proportion_v1(img):
     while (i < row_end ):
         j = col_start
         while(j < col_end):
-            the_list[gray_image_real[i,j]/32] += 1
+            the_list[gray_image_real[i,j]//32] += 1
  
             j = j+1
         i = i+1
@@ -42,12 +42,12 @@ def conculate_proportion_v1(img):
     plt.show()
 
 #通过量化降低来计算 kernel = 64， 4个区间
-def conculate_proportion_v2(img ,out_name):
+def conculate_proportion_v2(img ,out_name = 'the_whole_test'):
     row = img.shape[0]
     col = img.shape[1]
-    row_start = row/8
+    row_start = row//8
     row_end = row_start*7
-    col_start = col/8
+    col_start = col//8
     col_end = col_start*7
 
     # col_start = col/10
@@ -98,14 +98,14 @@ def conculate_proportion_v2(img ,out_name):
     # print the_list[list2[0]] ,the_list[list2[1]] ,the_list[list2[2]]
 
 #通过量化降低来计算 kernel = 86， 3个区间
-def conculate_proportion_v3(img, out_name):
+def conculate_proportion_v3(img, out_name = 'the_whole_test'):
     # img_procress = copy.deepcopy(img)
 
     row = img.shape[0]
     col = img.shape[1]
-    row_start = row/8
+    row_start = row//8
     row_end = row_start*7
-    col_start = col/8
+    col_start = col//8
     col_end = col_start*7
 
     # col_start = col/10
@@ -237,7 +237,7 @@ def reduce_colors(img, kernel):
     # kernel = 64 #四个颜色区间  
     # kernel = 86 #三个颜色区间，多一个255/85=3（4）
 
-    img = img/kernel
+    img = img//kernel
     # img = img/kernel*kernel + kernel/2
 
     # cv.imshow('test', img)
@@ -292,7 +292,7 @@ def separate_color(frame):
 
     mask = cv.inRange(hsv, lowerb = lower_hsv, upperb = high_hsv)           
     cv.imshow("ending", mask)
-    print mask.shape
+    print(mask.shape)
 
 #图片锐化
 def sharpen(img):
@@ -347,13 +347,13 @@ def demo(image):
     check_out_value , thresh1= conculate_proportion_v3(src, out_name)  #86
 
     if check_out == str(check_out_value):
-        print image +' is correct!'
+        print(image +' is correct!')
         return 1
     if check_out == '1' and check_out_value == 2:
-        print image +' is correct!'
+        print(image +' is correct!')
         return 1 
     else:
-        print image + ' is not correct'
+        print(image + ' is not correct')
         return 0
 
 if __name__ == '__main__':
@@ -366,7 +366,5 @@ if __name__ == '__main__':
         accuracy = accuracy+demo(image)
         the_number_of_img = the_number_of_img+1
 
-    print '\nthe number of the picture is: ' + format(the_number_of_img)
-    print 'the accuracy rate of judge is: ' + format(float(accuracy)/float(the_number_of_img),'.2f')
-
-        
+    print('\nthe number of the picture is: ' + format(the_number_of_img))
+    print('the accuracy rate of judge is: ' + format(float(accuracy)/float(the_number_of_img),'.2f'))
