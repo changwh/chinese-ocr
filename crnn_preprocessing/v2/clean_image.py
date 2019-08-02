@@ -18,7 +18,7 @@ def project_y(img):
     # print row
     i = 0
     j = 0
-    list_col = range(row)
+    list_col = list(range(row))
     while (i < row):
         j = 0
         list_col[i] = 0
@@ -100,7 +100,7 @@ def project_x(img):
     # print row
     i = 0
     j = 0
-    list_col = range(row)
+    list_col = list(range(row))
     while (i < row):
         j = 0
         list_col[i] = 0
