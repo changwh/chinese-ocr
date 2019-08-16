@@ -30,8 +30,8 @@ def crnnSource():
         model = crnn.CRNN(32, 1, len(alphabet) + 1, 256, 1).cpu()
     # path = './samples/model_acc97.pth'  # pycharm
     # path = './samples/mixed_second_finetune_acc97p7.pth'  # 另一个项目的
-    path = './samples/crnn_Rec_done_5_3334.pth'  # 另一个项目的
-    # path = 'crnn/samples/model_acc97.pth'   # vscode
+    path = './samples/crnn_Rec_done_11_2344.pth'  # 另一个项目的
+    # path = 'crnn/samples/crnn_Rec_done_11_2344.pth'   # vscode
     model.eval()
     model.load_state_dict(torch.load(path))
     return model, converter
@@ -47,10 +47,13 @@ def crnnOcr(image):
 
     """
 
-    scale = image.size[1] * 1.0 / 32
-    w = image.size[0] / scale
-    w = int(w)
-    # print "im size:{},{}".format(image.size,w)
+    # 按训练集的缩放比例缩放（假设训练图片宽度为280，训练时缩放到256），只缩放宽度(height变化的情况下效果不好)
+    # w = int(image.size[0] / (280 * 1.0 / 256))
+    # 按比例缩放（训练时尽量不缩放）（论文中的方法，但前提是测试样本长度大于训练样本）
+    # w = int(image.size[0] / (image.size[1] * 1.0 / 32))
+    # 先将测试图片按比例缩放至高度为32，再将缩放后图片按训练集的比例缩放
+    w = int((image.size[0] / (image.size[1] * 1.0 / 32)) / (250 * 1.0 / 256))
+
     transformer = dataset.resizeNormalize((w, 32))
     if torch.cuda.is_available() and GPU:
         image = transformer(image).cuda()
@@ -109,5 +112,5 @@ if __name__ == '__main__':
     #加载模型
     model, converter = crnnSource()
 
-    main('/home/user/testImg1/sam')
+    main('/home/user/testImg1/sam_font')
     # get_cut_img('/home/user/testImg1/4')
