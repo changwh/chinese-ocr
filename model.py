@@ -296,7 +296,7 @@ def model(img, imgNo, videoName, outputPath, output_process=False):
         return [], real_img, [], f
 
     # 送入CRNN检测
-    img, f = resize_im(preprocessed_img, scale=Config.SCALE, max_scale=Config.MAX_SCALE)
+    img, f = resize_im(real_img, scale=Config.SCALE, max_scale=Config.MAX_SCALE)
     result = crnnRec(img, text_recs)
 
     # 去除检测结果最前端非中文字符,出现重复字符的彻底解决方法应为重新训练

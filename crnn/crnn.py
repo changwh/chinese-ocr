@@ -38,7 +38,8 @@ def crnnSource():
        model = crnn.CRNN(32, 1, len(alphabet)+1, 256, 1).cuda()
     else:
         model = crnn.CRNN(32, 1, len(alphabet)+1, 256, 1).cpu()
-    path = './crnn/samples/model_acc97.pth'
+    # path = './crnn/samples/model_acc97.pth'
+    path = './crnn/samples/crnn_best.pth'
     model.eval()
     model.load_state_dict(torch.load(path))
     return model,converter
