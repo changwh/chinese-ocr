@@ -337,6 +337,7 @@ def main(left, top, right, bottom, img, videoName, outputPath, frameNum, index):
     #                         "4_canny2_{}_{}_{}.txt".format(base_name.split('.')[0], frameNum, index)), canny_img2, fmt='%d')
 
     # TODO:需要通过测试获得更多的参数
+    # TODO：前几帧计算后固定
     # if the_width >= 6:
     #     dilate_kernel = 12
     #     erode_kernel = 10
@@ -361,9 +362,12 @@ def main(left, top, right, bottom, img, videoName, outputPath, frameNum, index):
     elif the_width <= 2:
         dilate_kernel = 4
         erode_kernel = 2
-    elif the_width >= 6:
+    elif the_width == 6:
         dilate_kernel = 9
         erode_kernel = 6
+    elif the_width >= 7:
+        dilate_kernel = 10
+        erode_kernel = 7
 
     step1 = dilate_demo2(canny_img2, dilate_kernel)
     step2 = erode_demo(step1, erode_kernel)

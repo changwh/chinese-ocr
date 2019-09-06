@@ -59,11 +59,12 @@ class Queue():
 
 # global variables
 CANNY_IMG_QUEUE = Queue(2)
+RECS_QUEUE = Queue(2)
 HEIGHT_OF_SUBTITLE_FILTER_PER = 0.04
 LEFT_TOP_Y_PER = 0.7
 LEFT_BOTTOM_Y_PER = 1
 COUNT_OF_FRAME_WITH_SUBTITLE = 0
-RESULTS_DICT = {}
+RESULTS_LIST = []
 COUNT_OF_LOOSE_FRAME = 500  # TODO:finetune
 DIFFERENT_THRESHOLD = 6  # TODO:finetune
 
@@ -262,7 +263,6 @@ def model(img, imgNo, videoName, outputPath, output_process=False):
     global LEFT_TOP_Y_PER
     global LEFT_BOTTOM_Y_PER
     global COUNT_OF_FRAME_WITH_SUBTITLE
-    global RESULTS_DICT
 
     min_height_subtitle = 0.028 * real_img_height  # TODO:finetune
 
@@ -299,40 +299,96 @@ def model(img, imgNo, videoName, outputPath, output_process=False):
     img, f = resize_im(preprocessed_img, scale=Config.SCALE, max_scale=Config.MAX_SCALE)
     result = crnnRec(img, text_recs)
 
-    # 将当前帧的canny2图像写入队列
+    # 去除检测结果最前端非中文字符,出现重复字符的彻底解决方法应为重新训练
+    for key in result:
+        pattern = re.compile(u"^[^\u4e00-\u9fa5]+")
+        result[key][1] = re.sub(pattern, '', result[key][1])
+
+    # 根据位置对比是否同一字幕，进行投票
+    # 去除is_scroll为True的字幕框，不进行投票
+    no_scroll_result = []
+    no_scroll_canny_list = []
+    no_scroll_recs = []
+    for i in result:
+        no_scroll_result.append(result[i])
+        no_scroll_canny_list.append(canny_img2_list[i])
+        no_scroll_recs.append(real_recs[i])
+
+    # 将当前帧的canny2图像,real_recs写入队列
     if canny_img2_list.__len__() > 0:
         if CANNY_IMG_QUEUE.is_full():
             CANNY_IMG_QUEUE.dequeue()
-        CANNY_IMG_QUEUE.enqueue(canny_img2_list)
+            RECS_QUEUE.dequeue()
+        CANNY_IMG_QUEUE.enqueue(no_scroll_canny_list)
+        RECS_QUEUE.enqueue(no_scroll_recs)
 
-    # 比较当前帧与上一帧,判断是否为同一字幕,若不是,清空结果列表
-    if CANNY_IMG_QUEUE.is_full():
-        difference = get_img_difference(CANNY_IMG_QUEUE.queue[0][0], CANNY_IMG_QUEUE.queue[1][0])
-        if output_process:
-            print("the difference between " + str(imgNo) + " and " + str(imgNo - 1) + ":" + str(difference))
-        if difference >= DIFFERENT_THRESHOLD:
+    global RESULTS_LIST
+    result_dict = {}
+    new_result_list = []
+    is_match = True
+    distance_restrict_per = 0.01
+    max_distance = sqrt(real_img_height ** 2 + real_img_width ** 2)
+
+    if CANNY_IMG_QUEUE.is_full() and RESULTS_LIST:  # 队列满，则说明队列中存有前后两帧的canny_list，可进行相似对比
+        for i, curr_canny2 in enumerate(CANNY_IMG_QUEUE.queue[1]):  # 遍历当前帧的canny_list
+            # 计算文本框中心点坐标
+            curr_recs = RECS_QUEUE.queue[1][i]
+            curr_center_x = (curr_recs[0] + curr_recs[6]) * 0.5
+            curr_center_y = (curr_recs[1] + curr_recs[7]) * 0.5
+            for j, last_canny2 in enumerate(CANNY_IMG_QUEUE.queue[0]):  # 遍历前一帧的canny_list
+                # 计算文本框中心点
+                last_recs = RECS_QUEUE.queue[0][j]
+                last_center_x = (last_recs[0] + last_recs[6]) * 0.5
+                last_center_y = (last_recs[1] + last_recs[7]) * 0.5
+                # 计算前后两帧中两个文本框中心点的距离
+                distance = sqrt((last_center_x - curr_center_x) ** 2 + (last_center_y - curr_center_y) ** 2)
+
+                if distance < distance_restrict_per * max_distance:  # 距离小于阈值，能匹配到
+                    difference = get_img_difference(CANNY_IMG_QUEUE.queue[0][j], CANNY_IMG_QUEUE.queue[1][i])
+                    if output_process:
+                        print("the difference between", str(imgNo), "_", str(i), "and ", str(imgNo - 1), "_", str(j),
+                              ":", str(difference))
+                    if difference >= DIFFERENT_THRESHOLD:  # 匹配到，但是计算相似度的结果说明两个字幕不同
+                        if output_process:
+                            print(str(imgNo), "_", str(i), " different from", str(imgNo - 1), "_", str(j))
+                        # 去掉上一帧同位置的投票结果，并新增当前帧结果
+                        new_result_list.append({no_scroll_result[i][1]: 1})
+                    else:  # 匹配到，计算相似度的结果说明两个字幕相同
+                        # 更新位置（按y轴坐标进行排序写入list），结果（value）+1[{result1:times1,result2:times2,...},{result1:times1,result2:times2,...},...]
+                        result_dict = RESULTS_LIST[j]  # 读取该文本框在前一帧中的投票结果
+                        if no_scroll_result[i][1] in result_dict:  # 该结果之前已存在，数值+1
+                            result_dict[no_scroll_result[i][1]] = int(result_dict[no_scroll_result[i][1]]) + 1
+                        else:  # 该结果之前不存在，新增一个投票项，数值为1
+                            result_dict[no_scroll_result[i][1]] = 1
+                        new_result_list.append(result_dict.copy())
+                        result_dict.clear()
+                    is_match = True
+                    break
+                else:  # 距离大于阈值，没匹配到
+                    is_match = False
+                    pass
+            # j遍历后都未被匹配，新建一个结果
+            if not is_match:
+                result_dict[no_scroll_result[i][1]] = 1
+                new_result_list.append(result_dict.copy())
+                result_dict.clear()
+                is_match = True
+        # 用当前帧结果替代前一帧结果以去除结果中未被比较的项，只保留本帧中出现字幕位置的结果
+        RESULTS_LIST = new_result_list.copy()
+        new_result_list.clear()
+    else:  # 队列未满，则说明这是第一帧，需要初始化RESULT_LIST
+        for rlt in no_scroll_result:
+            RESULTS_LIST.append({rlt[1]: 1})
+    if output_process:
+        print(RESULTS_LIST)
+
+    # 输出出现次数最多的结果
+    for index, data in enumerate(RESULTS_LIST):
+        for k in sorted(data, key=data.__getitem__, reverse=True):
             if output_process:
-                print(str(imgNo) + " different from " + str(imgNo - 1))
-            RESULTS_DICT.clear()
-
-    # 根据是否为同一字幕采用投票策略,输出出现次数最多的结果
-    for key in result:
-        # 去除检测结果最前端非中文字符,出现重复字符的彻底解决方法应为重新训练
-        pattern = re.compile(u"^[^\u4e00-\u9fa5]+")
-        result[key][1] = re.sub(pattern, '', result[key][1])
-        if result[key][1] in RESULTS_DICT:
-            RESULTS_DICT[result[key][1]] = int(RESULTS_DICT[result[key][1]]) + 1
-        else:
-            RESULTS_DICT[result[key][1]] = 1
-
-    # sorted(d,key=d.__getitem__,reverse=True):
-    # results_list = sorted(RESULTS_DICT.items(), key=lambda x: x[1], reverse=True)
-    for k in sorted(RESULTS_DICT, key=RESULTS_DICT.__getitem__, reverse=True):
-        if output_process:
-            print(RESULTS_DICT)
-            print("result:" + k + ", times:" + str(RESULTS_DICT[k]))
-        result[key][1] = k
-        break
+                print("result:" + k + ", times:" + str(data[k]))
+            result[int(index)][1] = k
+            break
 
     if output_process:
         return result, preprocessed_img, real_recs, f
