@@ -23,11 +23,18 @@ def test():
                 print(str(i) + 'and' + str(i + 1) + 'are different')
 
 
-def get_img_difference(img1, img2):
+def get_img_difference(img1, img2, hash_type="perception"):
     im1 = Image.fromarray(cv.cvtColor(cv.cvtColor(img1, cv.COLOR_GRAY2BGR), cv.COLOR_BGR2RGB))
     im2 = Image.fromarray(cv.cvtColor(cv.cvtColor(img2, cv.COLOR_GRAY2BGR), cv.COLOR_BGR2RGB))
-    img_hash = imagehash.average_hash(im1)
-    next_hash = imagehash.average_hash(im2)
+    if hash_type == "perception":
+        img_hash = imagehash.phash(im1)
+        next_hash = imagehash.phash(im2)
+    elif hash_type == "average":
+        img_hash = imagehash.average_hash(im1)
+        next_hash = imagehash.average_hash(im2)
+    elif hash_type == "wavelet":
+        img_hash = imagehash.whash(im1)
+        next_hash = imagehash.whash(im2)
     return img_hash - next_hash
 
 

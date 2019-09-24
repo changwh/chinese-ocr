@@ -66,7 +66,7 @@ LEFT_BOTTOM_Y_PER = 1
 COUNT_OF_FRAME_WITH_SUBTITLE = 0
 RESULTS_LIST = []
 COUNT_OF_LOOSE_FRAME = 500  # TODO:finetune
-DIFFERENT_THRESHOLD = 6  # TODO:finetune
+DIFFERENT_THRESHOLD = 10  # TODO:finetune 6
 
 
 def crnnRec(im, text_recs):
@@ -309,6 +309,8 @@ def model(img, imgNo, videoName, outputPath, output_process=False):
     no_scroll_result = []
     no_scroll_canny_list = []
     no_scroll_recs = []
+    # 更新原图坐标
+    real_recs = toRealCoordinate(text_recs, f)
     for i in result:
         no_scroll_result.append(result[i])
         no_scroll_canny_list.append(canny_img2_list[i])
@@ -340,11 +342,38 @@ def model(img, imgNo, videoName, outputPath, output_process=False):
                 last_recs = RECS_QUEUE.queue[0][j]
                 last_center_x = (last_recs[0] + last_recs[6]) * 0.5
                 last_center_y = (last_recs[1] + last_recs[7]) * 0.5
-                # 计算前后两帧中两个文本框中心点的距离
+                # 计算前后两帧中两个文本框中心点的距离 TODO:设置水平与竖直的不同权重
                 distance = sqrt((last_center_x - curr_center_x) ** 2 + (last_center_y - curr_center_y) ** 2)
 
                 if distance < distance_restrict_per * max_distance:  # 距离小于阈值，能匹配到
-                    difference = get_img_difference(CANNY_IMG_QUEUE.queue[0][j], CANNY_IMG_QUEUE.queue[1][i])
+                    x_list = sorted([last_recs[0], last_recs[6], curr_recs[0], curr_recs[6]])
+                    canny_part_xmin = x_list[1]
+                    canny_part_xmax = x_list[2]
+                    canny_len = canny_part_xmax - canny_part_xmin
+
+                    y_list = sorted([last_recs[1], last_recs[7], curr_recs[1], curr_recs[7]])
+                    canny_part_ymin = y_list[1]
+                    canny_part_ymax = y_list[2]
+
+                    compute_part_len = canny_len / 2 // 2
+
+                    x_min = (canny_part_xmin + canny_part_xmax) // 2 - compute_part_len
+                    x_max = (canny_part_xmin + canny_part_xmax) // 2 + compute_part_len
+
+                    related_late_xmin = int(x_min - last_recs[0])
+                    related_late_xmax = int(x_max - last_recs[0])
+                    related_curr_xmin = int(x_min - curr_recs[0])
+                    related_curr_xmax = int(x_max - curr_recs[0])
+
+                    related_late_ymin = int(canny_part_ymin - last_recs[1])
+                    related_late_ymax = int(canny_part_ymax - last_recs[1])
+                    related_curr_ymin = int(canny_part_ymin - curr_recs[1])
+                    related_curr_ymax = int(canny_part_ymax - curr_recs[1])
+
+                    difference = get_img_difference(
+                        CANNY_IMG_QUEUE.queue[0][j][related_late_ymin:related_late_ymax, related_late_xmin:related_late_xmax],
+                        CANNY_IMG_QUEUE.queue[1][i][related_curr_ymin:related_curr_ymax, related_curr_xmin:related_curr_xmax],
+                        hash_type="wavelet")
                     if output_process:
                         print("the difference between", str(imgNo), "_", str(i), "and ", str(imgNo - 1), "_", str(j),
                               ":", str(difference))
@@ -353,6 +382,12 @@ def model(img, imgNo, videoName, outputPath, output_process=False):
                             print(str(imgNo), "_", str(i), " different from", str(imgNo - 1), "_", str(j))
                         # 去掉上一帧同位置的投票结果，并新增当前帧结果
                         new_result_list.append({no_scroll_result[i][1]: 1})
+                        # print("center_distance", distance)
+                        # print(related_late_ymin, related_late_ymax, last_recs[1], last_recs[7])
+                        # print(related_curr_ymin, related_curr_ymax, curr_recs[1], curr_recs[7])
+                        # cv2.imshow("last", CANNY_IMG_QUEUE.queue[0][j][related_late_ymin:related_late_ymax, related_late_xmin:related_late_xmax])
+                        # cv2.imshow("curr", CANNY_IMG_QUEUE.queue[1][i][related_curr_ymin:related_curr_ymax, related_curr_xmin:related_curr_xmax])
+                        # cv2.waitKey(0)
                     else:  # 匹配到，计算相似度的结果说明两个字幕相同
                         # 更新位置（按y轴坐标进行排序写入list），结果（value）+1[{result1:times1,result2:times2,...},{result1:times1,result2:times2,...},...]
                         result_dict = RESULTS_LIST[j]  # 读取该文本框在前一帧中的投票结果
