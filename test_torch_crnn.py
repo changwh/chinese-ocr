@@ -30,10 +30,26 @@ def crnnSource():
         model = crnn.CRNN(32, 1, len(alphabet) + 1, 256, 1).cpu()
     # path = './samples/model_acc97.pth'  # pycharm
     # path = './samples/mixed_second_finetune_acc97p7.pth'  # 另一个项目的
-    path = './samples/crnn_Rec_done_11_2344.pth'  # 另一个项目的
-    # path = 'crnn/samples/crnn_Rec_done_11_2344.pth'   # vscode
+    path = './samples/crnn_best.pth'
+    # path = 'crnn/samples/model_acc97.pth'   # vscode
     model.eval()
     model.load_state_dict(torch.load(path))
+
+    # # 冻结某些参数
+    # for i,para in enumerate(model.parameters()):
+    #     if i < 20:
+    #         para.requires_grad = False
+    #     else:
+    #         para.requires_grad = True
+
+    # # 打印模型结构
+    # import pprint
+    # import torchsummaryX
+    #
+    # params = list(model.named_parameters())
+    # pprint.pprint(params)
+    # torchsummaryX.summary(model, torch.zeros((1,1,32,256)).cuda())
+
     return model, converter
 
 
@@ -50,9 +66,9 @@ def crnnOcr(image):
     # 按训练集的缩放比例缩放（假设训练图片宽度为280，训练时缩放到256），只缩放宽度(height变化的情况下效果不好)
     # w = int(image.size[0] / (280 * 1.0 / 256))
     # 按比例缩放（训练时尽量不缩放）（论文中的方法，但前提是测试样本长度大于训练样本）
-    # w = int(image.size[0] / (image.size[1] * 1.0 / 32))
+    w = int(image.size[0] / (image.size[1] * 1.0 / 32))
     # 先将测试图片按比例缩放至高度为32，再将缩放后图片按训练集的比例缩放
-    w = int((image.size[0] / (image.size[1] * 1.0 / 32)) / (250 * 1.0 / 256))
+    # w = int((image.size[0] / (image.size[1] * 1.0 / 32)) / (250 * 1.0 / 256))
 
     transformer = dataset.resizeNormalize((w, 32))
     if torch.cuda.is_available() and GPU:
@@ -88,14 +104,14 @@ def main(input_dir):
         img = Image.open(img_name).convert('L')
         t = time.time()
         result1 = get_crnn_result(img)
-        gray_im = ImageOps.invert(img)
-        result2 = get_crnn_result(gray_im)
+        # gray_im = ImageOps.invert(img)
+        # result2 = get_crnn_result(gray_im)
 
         print("Frame number:{}, It takes time:{}s".format(0, time.time() - t))
         print("---------------------------------------")
         print("识别结果:")
         print("origin:", result1)
-        print("invert:", result2)
+        # print("invert:", result2)
 
 # 切割存在两种字体的文字框图片
 def get_cut_img(input_dir):

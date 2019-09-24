@@ -116,9 +116,9 @@ def start_video(input_path_list, output_path, start_frame=None, end_frame=None, 
 
 
 if __name__ == '__main__':
-    start_video(["/home/user/PycharmProjects/text-detection-ctpn/data/news/2.mp4"],
-                "/home/user/mytest25",
-                start_frame=5230, stride=1, output_process=True)  # news 2-45605 overlap error 2-2722
+    start_video(["/home/user/PycharmProjects/text-detection-ctpn/data/news/1.mp4"],
+                "/home/user/news_test_2",
+                start_frame=5000, end_frame=6500, stride=1, output_process=True)  # news 2-45605 overlap error 2-2722
                 # 1: 5500-7250
                 # 2: 5325-7250
                 # 3: 3875-6275
