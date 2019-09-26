@@ -30,13 +30,13 @@ def ctpn(img, top, bottom, left, right):
     text box detect
     """
     scale, max_scale = Config.SCALE, Config.MAX_SCALE
-    img, f = resize_im(img, scale=scale, max_scale=max_scale)
+    resize_img, resize_ratio = resize_im(img, scale=scale, max_scale=max_scale)
     # restrict the region of interest
-    roi_img = img[int(img.shape[0] * top): int(img.shape[0] * bottom), int(img.shape[1] * left): int(img.shape[1] * right)]
+    roi_img = resize_img[int(resize_img.shape[0] * top): int(resize_img.shape[0] * bottom), int(resize_img.shape[1] * left): int(resize_img.shape[1] * right)]
     scores, boxes = test_ctpn(sess, net, roi_img)
     # get origin resized coordinates
-    boxes[:, 1] = boxes[:, 1] + int(img.shape[0] * top)
-    boxes[:, 3] = boxes[:, 3] + int(img.shape[0] * top)
-    boxes[:, 0] = boxes[:, 0] + int(img.shape[1] * left)
-    boxes[:, 2] = boxes[:, 2] + int(img.shape[1] * left)
-    return scores, boxes, img, f
+    boxes[:, 1] = boxes[:, 1] + int(resize_img.shape[0] * top)
+    boxes[:, 3] = boxes[:, 3] + int(resize_img.shape[0] * top)
+    boxes[:, 0] = boxes[:, 0] + int(resize_img.shape[1] * left)
+    boxes[:, 2] = boxes[:, 2] + int(resize_img.shape[1] * left)
+    return scores, boxes, resize_img, resize_ratio

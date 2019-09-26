@@ -435,7 +435,7 @@ def test_get_overlap_coordinate():
     get_overlap_coordinate([600, 650, 900, 950], [700, 750, 1000, 1050])
 
 
-def p_picture(text_recs, is_scroll, img, frameNum, videoName, outputPath):
+def p_picture(text_recs, is_scroll, img, frameNum, videoName, outputPath, version):
     subtitle_height_list = []
     canny2_img_list = []
     output_list = []
@@ -448,8 +448,12 @@ def p_picture(text_recs, is_scroll, img, frameNum, videoName, outputPath):
         left = location_list[index][2]
         right = location_list[index][3]
 
-        output, subtitle_height, canny2_img = main_v2(left, top, right, bottom,
-                                                   img, videoName, outputPath, frameNum, index)
+        if version == 1:
+            output, subtitle_height, canny2_img = main(left, top, right, bottom,
+                                                       img, videoName, outputPath, frameNum, index)
+        elif version == 2:
+            output, subtitle_height, canny2_img = main_v2(left, top, right, bottom,
+                                                       img, videoName, outputPath, frameNum, index)
         output_list.append(output)
 
         subtitle_height_list.append(subtitle_height)

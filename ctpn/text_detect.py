@@ -30,13 +30,14 @@ def draw_text_proposals(img, text_proposals):
 
 
 def text_detect(img, top=0, bottom=1, left=0, right=1):
-    scores, boxes, img, f = ctpn(img, top, bottom, left, right)
-    textdetector = TextDetector()
-    boxes, _ = textdetector.detect(boxes, scores[:, np.newaxis], img.shape[:2])
-    text_recs, drawn_img = draw_boxes(img, boxes, caption='im_name', wait=True, is_display=False)
-    return text_recs, drawn_img, img, f
+    scores, boxes, resize_img, resize_ratio = ctpn(img, top, bottom, left, right)
+    text_detector = TextDetector()
+    boxes, _ = text_detector.detect(boxes, scores[:, np.newaxis], resize_img.shape[:2])
+    text_recs, drawn_img = draw_boxes(resize_img, boxes, caption='im_name', wait=True, is_display=False)
+    return text_recs, drawn_img, resize_img, resize_ratio
 
 
+# TODO;修改
 def test_text_detect(img, top=0, bottom=1, left=0, right=1):
     height = img.shape[0]
     width = img.shape[1]
