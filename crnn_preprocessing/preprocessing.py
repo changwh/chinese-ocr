@@ -6,6 +6,7 @@ import os
 import random
 from . import clean_image
 from .v2.final import main as main_v2
+from utils import get_overlap_coordinate
 
 # import natsort
 
@@ -371,46 +372,6 @@ def main(left, top, right, bottom, img, videoName, outputPath, frameNum, index):
     return output, subtitle_height, canny_img2
 
 
-# 判断两个矩形框是否有重叠部分，并输出重叠部分位置
-def get_overlap_coordinate(location_a, location_b):
-    x = [location_a[0], location_a[2], location_b[0], location_b[2]]
-    y = [location_a[1], location_a[5], location_b[1], location_b[5]]
-    overlap_location = []
-    x.sort()
-    y.sort()
-    if y[1] != location_a[5]:
-        for index, value in enumerate(x):
-            if value == location_a[0]:
-                if x[index+1] != location_a[2]:
-                    overlap_location = [y[1], y[2], x[1], x[2]]
-            elif value == location_b[0]:
-                if x[index+1] != location_b[2]:
-                    overlap_location = [y[1], y[2], x[1], x[2]]
-    # if overlap_location:
-    #     print(overlap_location)
-    # else:
-    #     pass
-    return overlap_location
-
-
-def get_union_coordinate(location_a, location_b):
-    x = [location_a[0], location_a[2], location_b[0], location_b[2]]
-    y = [location_a[1], location_a[5], location_b[1], location_b[5]]
-    union_location = []
-    x.sort()
-    y.sort()
-    if y[1] != location_a[5]:
-        for index, value in enumerate(x):
-            if value == location_a[0]:
-                if x[index+1] != location_a[2]:
-                    union_location = [y[0], y[3], x[0], x[3]]
-            elif value == location_b[0]:
-                if x[index+1] != location_b[2]:
-                    union_location = [y[0], y[3], x[0], x[3]]
-
-    return union_location
-
-
 def get_localtions(text_recs, img):
     locations = []
     for index in range(len(text_recs)):
@@ -421,18 +382,6 @@ def get_localtions(text_recs, img):
         location = [top, bottom, left, right]
         locations.append(location)
     return locations
-
-
-def test_get_overlap_coordinate():
-    get_overlap_coordinate([600, 750, 900, 1050], [650, 700, 950, 1000])
-    get_overlap_coordinate([600, 700, 950, 1050], [650, 750, 900, 1000])
-    get_overlap_coordinate([600, 750, 900, 1050], [650, 700, 950, 1000])
-    get_overlap_coordinate([600, 750, 950, 1050], [650, 700, 900, 1000])
-    get_overlap_coordinate([600, 750, 900, 1000], [650, 700, 950, 1050])
-    get_overlap_coordinate([600, 700, 950, 1000], [650, 750, 900, 1050])
-    get_overlap_coordinate([600, 700, 900, 1050], [650, 750, 950, 1000])
-
-    get_overlap_coordinate([600, 650, 900, 950], [700, 750, 1000, 1050])
 
 
 def p_picture(text_recs, is_scroll, img, frameNum, videoName, outputPath, version):
@@ -507,5 +456,5 @@ def p_picture(text_recs, is_scroll, img, frameNum, videoName, outputPath, versio
 
 
 if __name__ == '__main__':
-    test_get_overlap_coordinate()
+    # test_get_overlap_coordinate()
     pass

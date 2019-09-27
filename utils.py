@@ -106,6 +106,58 @@ def get_img_difference(img1, img2, hash_type="perception"):
 #                 print(str(i) + 'and' + str(i + 1) + 'are different')
 
 
+# 判断两个矩形框是否有重叠部分，并输出重叠部分位置
+def get_overlap_coordinate(location_a, location_b):
+    x = [location_a[0], location_a[2], location_b[0], location_b[2]]
+    y = [location_a[1], location_a[5], location_b[1], location_b[5]]
+    overlap_location = []
+    x.sort()
+    y.sort()
+    if y[1] != location_a[5]:
+        for index, value in enumerate(x):
+            if value == location_a[0]:
+                if x[index+1] != location_a[2]:
+                    overlap_location = [y[1], y[2], x[1], x[2]]
+            elif value == location_b[0]:
+                if x[index+1] != location_b[2]:
+                    overlap_location = [y[1], y[2], x[1], x[2]]
+    # if overlap_location:
+    #     print(overlap_location)
+    # else:
+    #     pass
+    return overlap_location
+
+
+def test_get_overlap_coordinate():
+    get_overlap_coordinate([600, 750, 900, 1050], [650, 700, 950, 1000])
+    get_overlap_coordinate([600, 700, 950, 1050], [650, 750, 900, 1000])
+    get_overlap_coordinate([600, 750, 900, 1050], [650, 700, 950, 1000])
+    get_overlap_coordinate([600, 750, 950, 1050], [650, 700, 900, 1000])
+    get_overlap_coordinate([600, 750, 900, 1000], [650, 700, 950, 1050])
+    get_overlap_coordinate([600, 700, 950, 1000], [650, 750, 900, 1050])
+    get_overlap_coordinate([600, 700, 900, 1050], [650, 750, 950, 1000])
+
+    get_overlap_coordinate([600, 650, 900, 950], [700, 750, 1000, 1050])
+
+
+def get_union_coordinate(location_a, location_b):
+    x = [location_a[0], location_a[2], location_b[0], location_b[2]]
+    y = [location_a[1], location_a[5], location_b[1], location_b[5]]
+    union_location = []
+    x.sort()
+    y.sort()
+    if y[1] != location_a[5]:
+        for index, value in enumerate(x):
+            if value == location_a[0]:
+                if x[index+1] != location_a[2]:
+                    union_location = [y[0], y[3], x[0], x[3]]
+            elif value == location_b[0]:
+                if x[index+1] != location_b[2]:
+                    union_location = [y[0], y[3], x[0], x[3]]
+
+    return union_location
+
+
 if __name__ == '__main__':
     # main('/home/user/桌面/gray')
     # main('/home/user/PycharmProjects/my_crnn_trainer/my_data_generator/out/train')
