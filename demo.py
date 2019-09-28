@@ -16,7 +16,7 @@ def parse_arguments():
         type=str,
         nargs="?",
         help="The input file to be processed",
-        default="/home/user/PycharmProjects/text-detection-ctpn/data/news/1.mp4"
+        default="/home/user/PycharmProjects/text-detection-ctpn/data/video2/1.mp4"
     )
     parser.add_argument(
         "-o",
@@ -32,7 +32,7 @@ def parse_arguments():
         type=int,
         nargs="?",
         help="Define which frame the program starts from",
-        default=6900
+        default=5400
     )
     parser.add_argument(
         "-ef",
@@ -40,7 +40,7 @@ def parse_arguments():
         type=int,
         nargs="?",
         help="Define which frame the program ends with",
-        default=7100
+        default=7200
     )
     parser.add_argument(
         "-s",
@@ -119,8 +119,8 @@ def start_video(input_path_list, output_path, start_frame, end_frame, stride, ou
                     video_capture.release()
                     break
 
-            result, frame, is_scroll, ratio = model.model_news(frame, frame_num, video_name, output_path, output_process=output_process)
-            # result, frame, is_scroll, ratio = model.model(frame, frame_num, video_name, output_path, output_process=output_process)
+            # result, frame, is_scroll, ratio = model.model_news(frame, frame_num, video_name, output_path, output_process=output_process)
+            result, frame, is_scroll, ratio = model.model(frame, frame_num, video_name, output_path, output_process=output_process)
             print("Frame number:{}, It takes time:{}s".format(frame_num, time.time() - t))
             print("---------------------------------------")
             print("识别结果:")

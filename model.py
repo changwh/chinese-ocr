@@ -12,11 +12,8 @@ from math import *
 from PIL import Image
 from random import randint
 from ctpn.text_detect import text_detect
-from ocr.model import predict as ocr
 from crnn.crnn import crnnOcr
 from crnn_preprocessing import preprocessing
-from ctpn.ctpn.cfg import Config
-from ctpn.ctpn.other import resize_im
 from utils import Queue, get_img_difference, get_union_coordinate
 
 
@@ -471,7 +468,7 @@ def model(img, img_no, video_name, output_path, output_process=False):
 
     # crnn前预处理
     origin_img = img.copy()
-    preprocessed_img, subtitle_height_list, canny_img2_list = preprocessing.p_picture(origin_recs, [], origin_img, img_no, video_name, output_path, 1)
+    preprocessed_img, subtitle_height_list, canny_img2_list = preprocessing.p_picture(origin_recs, [False] * len(origin_recs), origin_img, img_no, video_name, output_path, 1)
     #TODO： 1.mp4 4374帧字幕高度检测检测失常、拼接时纵向位置的偏差
 
     # if output_process:
@@ -488,7 +485,6 @@ def model(img, img_no, video_name, output_path, output_process=False):
         return [], img, [], resize_ratio
 
     # 送入CRNN检测
-    # img, f = resize_im(img, scale=Config.SCALE, max_scale=Config.MAX_SCALE)
     result = crnnRec(resize_img, text_recs)
 
     # 去除检测结果最前端非中文字符,出现重复字符的彻底解决方法应为重新训练

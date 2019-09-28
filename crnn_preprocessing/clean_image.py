@@ -12,25 +12,31 @@ from matplotlib import pyplot as plt
 
 
 # 将图片投影到y轴
-def project_y(img):
+def projection_y(img):
     row = img.shape[0]
     col = img.shape[1]
-    # print row
-    i = 0
-    j = 0
-    list_col = list(range(row))
-    while (i < row):
-        j = 0
-        list_col[i] = 0
-        while (j < col):
-            if img[i][j] == 255:
-                list_col[i] = list_col[i] + 1
-            j = j + 1
+    list_row = []
+    for i in range(row):
+        white_point_num = 0
+        for j in range(col):
+            if img[i, j] == 255:
+                white_point_num += 1
+        list_row.append(white_point_num)
 
-        # print list_col[i]
-        i = i + 1
-        # plt.bar(range(len(data)), data)
-    # plt.show()
+    return list_row
+
+
+# 将图片投影到x轴
+def projection_x(img):
+    row = img.shape[0]
+    col = img.shape[1]
+    list_col = []
+    for j in range(col):
+        white_point_num = 0
+        for i in range(row):
+            if img[i, j] == 255:
+                white_point_num += 1
+        list_col.append(white_point_num)
 
     return list_col
 
@@ -38,88 +44,56 @@ def project_y(img):
 # 清除噪声
 def clean(data, img, type_xy):
     mean = np.mean(data)
-    global index_1
-    index_1 = -1
-    if type_xy == 'x':
-        mean = mean + 1
+    clean_stop_row = -1
+    if type_xy == 'x':  # 左右两边的清楚标准更严格？
+        mean += 1
     for i, element in enumerate(data):
         if element > mean:
-            index_1 = i
+            clean_stop_row = i
             break
-    if i > 3:
-        j = i - 4
-        while (j >= 0):
+    if clean_stop_row > 3:   # 小于等于3的为什么不清除
+        for j in range(clean_stop_row - 4, -1, -1):
             delate_img(img, j)
-            j = j - 1
 
-    return index_1
+    return clean_stop_row
 
 
 # 清除canny图片的第几行
 def delate_img(img, i):
     col = img.shape[1]  # 列数
-    j = 0
-    while (j < col):
-        img[i][j] = 0
-        j = j + 1
+    for j in range(col):
+        img[i, j] = 0
 
 
 def wash_canny_picture(img):
-    img = cv.cvtColor(img, cv.COLOR_BGR2GRAY)
-    data_y = project_y(img)
-    # data_x = project_x(img)
+    data_y = projection_y(img)
+    # data_x = projection_x(img)
 
     top = clean(data_y, img, 'y')   # top
 
-    img = imutils.rotate_bound(img, 90)  # right
+    # img = imutils.rotate_bound(img, 90)  # right
     # clean(data_x, img, 'x')
 
-    img = imutils.rotate_bound(img, 90)  # bottom
+    img = imutils.rotate_bound(img, 180)  # bottom
     data_y.reverse()
     bottom = clean(data_y, img, 'y')
 
-    img = imutils.rotate_bound(img, 90)  # left
+    # img = imutils.rotate_bound(img, 90)  # left
     # data_x.reverse()
     # clean(data_x, img, 'x')
 
-    img = imutils.rotate_bound(img, 90)  # 恢复
-        
+    img = imutils.rotate_bound(img, 180)  # 恢复
+
     subtitle_height = len(data_y) - top - bottom
     if top < 0 and bottom < 0:
         subtitle_height = 0
-    # cv.imshow('ss', img)
-    # if cv.waitKey(0) == ord('q'):
-    #     pass
-    
+
     return img, subtitle_height
 
 
-# 将图片投影到x轴
-def project_x(img):
-    row = img.shape[1]
-    col = img.shape[0]
-    # print row
-    i = 0
-    j = 0
-    list_col = list(range(row))
-    while (i < row):
-        j = 0
-        list_col[i] = 0
-        while (j < col):
-            if img[j][i] == 255:
-                list_col[i] = list_col[i] + 1
-            j = j + 1
-
-        # print list_col[i]
-        i = i + 1
-        # plt.bar(range(len(data)), data)
-    # plt.show()
-    return list_col
-
-
-if __name__ == '__main__':
-    img = cv.imread('canny_image.jpg')
-    img, num = wash_canny_picture(img)
+# if __name__ == '__main__':
+    # img = cv.imread('canny_image.jpg')
+    # img, num = wash_canny_picture(img)
 
     # plt.bar(range(len(data)), data)
     # plt.show()

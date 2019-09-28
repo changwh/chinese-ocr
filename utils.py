@@ -158,6 +158,22 @@ def get_union_coordinate(location_a, location_b):
     return union_location
 
 
+def draw_ctpn_result_boxes(location_list, img):
+    c = (0, 255, 0)
+
+    for index in range(len(location_list)):
+        top = location_list[index][0]
+        bottom = location_list[index][1]
+        left = location_list[index][2]
+        right = location_list[index][3]
+        cv2.line(img, (left, top), (right, top), c, 2)
+        cv2.line(img, (left, top), (left, bottom), c, 2)
+        cv2.line(img, (right, bottom), (right, top), c, 2)
+        cv2.line(img, (left, bottom), (right, bottom), c, 2)
+
+    return img
+
+
 if __name__ == '__main__':
     # main('/home/user/桌面/gray')
     # main('/home/user/PycharmProjects/my_crnn_trainer/my_data_generator/out/train')
