@@ -1,68 +1,21 @@
 #coding=utf-8
+from .clean_image import projection_x
 import numpy as np
 import cv2 as cv
 import sys
-import os
-import natsort
-# np.set_printoptions(threshold=np.nan)
+
 np.set_printoptions(threshold=sys.maxsize)
-from matplotlib import pyplot as plt
 
-#将图片投影到y轴
-def project_y(img):
-    row = img.shape[0]
-    col = img.shape[1]
-    # print row
-    i = 0
-    j = 0
-    list_col = range(row)
-    while (i < row):
-        j = 0
-        list_col[i] = 0
-        while (j < col):
-            if img[i][j] == 255:
-                list_col[i] = list_col[i] + 1
-            j = j + 1
-
-        # print list_col[i]
-        i = i + 1 
-    # plt.bar(range(len(data)), data)
-    # plt.show()
-
-    return list_col
-
-
-#将图片投影到x轴
-def project_x(img):
-    row = img.shape[1]
-    col = img.shape[0]
-    # print row
-    i = 0
-    j = 0
-    list_col = range(row)
-    while (i < row):
-        j = 0
-        list_col[i] = 0
-        while (j < col):
-            if img[j][i] == 255:
-                list_col[i] = list_col[i] + 1
-            j = j + 1
-
-        # print list_col[i]
-        i = i + 1 
-    # plt.bar(range(len(data)), data)
-    # plt.show()
-    return list_col
 
 # 分离滚动字幕前的固定字幕
 def news_procress(img, original_img):
-    row ,col =img.shape
+    row, col = img.shape
 
     # p_list = project_y(img)
     # max_num = max(p_list)
     # max_num_index = p_list.index(max_num)
 
-    p_list_x = project_x(img)
+    p_list_x = projection_x(img)
     max_num_x = max(p_list_x)
     max_num_x_index = p_list_x.index(max_num_x)
 
@@ -98,7 +51,7 @@ def news_procress(img, original_img):
     return img, line_num
 
 
-#分离为两个图片
+# 分离为两个图片
 def separate_picture(img, separate_line_num):
     row, col = img.shape[0], img.shape[1]
     roi_false = img[0:row-1, 0:separate_line_num]
@@ -109,7 +62,8 @@ def separate_picture(img, separate_line_num):
         pass
     return roi_false , roi_true
 
-#将左边的图片删除
+
+# 将左边的图片删除
 def clean_left_picture(img, separate_line_num):
     row, col = img.shape[0], img.shape[1]
     i = 0
@@ -128,9 +82,7 @@ def clean_left_picture(img, separate_line_num):
     return img
 
 
-
-
-if __name__ == '__main__':
-    pass
+# if __name__ == '__main__':
+#     pass
 
 

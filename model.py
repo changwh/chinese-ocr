@@ -541,13 +541,7 @@ def model_news(img, img_no, video_name, output_path, output_process=False):
 
     # crnn前预处理
     origin_img = img.copy()
-    preprocessed_img, subtitle_height_list, canny_img2_list = preprocessing.p_picture(origin_recs, is_scroll, origin_img, img_no, video_name, output_path, 2)
-
-    # if output_process:
-    #     np.savetxt(
-    #         os.path.join(output_path,
-    #                      "subtitle_height_{}_{}.txt".format(video_name.split('/')[-1].split('.')[0], img_no)),
-    #         subtitle_height_list, fmt='%d')
+    preprocessed_img, canny_img2_list = preprocessing.p_picture(origin_recs, is_scroll, origin_img, img_no, video_name, output_path, 2)
 
     # 送入CRNN检测
     result = crnnRec(resize_img, text_recs)

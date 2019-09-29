@@ -1,14 +1,9 @@
 # coding=utf-8
 import numpy as np
-import cv2 as cv
-import os
-import natsort
 import sys
 import imutils
 
-# np.set_printoptions(threshold=np.nan)
 np.set_printoptions(threshold=sys.maxsize)
-from matplotlib import pyplot as plt
 
 
 # 将图片投影到y轴
@@ -45,7 +40,7 @@ def projection_x(img):
 def clean(data, img, type_xy):
     mean = np.mean(data)
     clean_stop_row = -1
-    if type_xy == 'x':  # 左右两边的清楚标准更严格？
+    if type_xy == 'x':  # 左右两边的清除标准更严格？
         mean += 1
     for i, element in enumerate(data):
         if element > mean:
