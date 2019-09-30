@@ -55,7 +55,7 @@ def parse_arguments():
         "--output_process",
         action="store_true",
         help="output all the process result",
-        default=True  # todo:False
+        default=False
     )
     return parser.parse_args()
 
