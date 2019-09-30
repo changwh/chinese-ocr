@@ -21,10 +21,7 @@ from utils import Queue, get_img_difference
 # 文本框最小高度（0.045*720=32.4px）
 G_MIN_BOX_HEIGHT = 0.045
 # # 文本框最大高度（0.088*720=63.36px）
-# G_MAX_BOX_HEIGHT = 0.088
-# TODO:news
-# 文本框最大高度（0.1*720=72px）
-G_MAX_BOX_HEIGHT = 0.1
+G_MAX_BOX_HEIGHT = 0.088
 # 文本最小高度（与preprocessing输出对比）（0.028*720=20.16px）
 G_MIN_SUBTITLE_HEIGHT = 0.028
 # 文本最大高度（与preprocessing输出对比）（0.070*720=50.4px）

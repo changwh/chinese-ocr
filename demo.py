@@ -132,7 +132,6 @@ def main():
     stride = args.stride
     output_process = args.output_process
 
-    # print(input_file_list, output_path, start_frame, end_frame, stride, output_process)
     start_video(input_file_list, output_path, start_frame=start_frame, end_frame=end_frame, stride=stride,
                 output_process=output_process)
 
