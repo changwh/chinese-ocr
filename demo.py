@@ -9,22 +9,22 @@ import argparse
 
 
 def parse_arguments():
-    parser = argparse.ArgumentParser(description="Slice video into images")
+    parser = argparse.ArgumentParser(description="Chinese subtitle ocr")
     parser.add_argument(
         "-i",
         "--input_file",
         type=str,
         nargs="?",
         help="The input file to be processed",
-        default="/home/user/PycharmProjects/text-detection-ctpn/data/news/1.mp4"
+        default="/home/user/PycharmProjects/text-detection-ctpn/data/video2/1.mp4"
     )
     parser.add_argument(
         "-o",
         "--output_path",
         type=str,
         nargs="?",
-        help="The output path to store frame images",
-        default="/home/user/rebase_test3"
+        help="The output path to store result",
+        default="/home/user/test"
     )
     parser.add_argument(
         "-sf",
@@ -54,8 +54,8 @@ def parse_arguments():
         "-op",
         "--output_process",
         action="store_true",
-        help="output all the process result",
-        default=True  # todo:False
+        help="Define whether output all the process result",
+        default=False
     )
     return parser.parse_args()
 
