@@ -10,7 +10,6 @@ sys.path.append('ctpn')
 
 from math import *
 from PIL import Image
-from random import randint
 from ctpn.text_detect import text_detect
 from crnn.crnn import crnnOcr
 from crnn_preprocessing import preprocessing
@@ -20,9 +19,6 @@ from utils import Queue, get_img_difference, get_union_coordinate
 # global constant
 # 文本框最小高度（0.045*720=32.4px）
 G_MIN_BOX_HEIGHT = 0.045
-# # 文本框最大高度（0.088*720=63.36px）
-# G_MAX_BOX_HEIGHT = 0.088
-# TODO:news
 # 文本框最大高度（0.1*720=72px）
 G_MAX_BOX_HEIGHT = 0.1
 # 文本最小高度（与preprocessing输出对比）（0.028*720=20.16px）
@@ -96,7 +92,6 @@ def dumpRotateImage(img, degree, pt1, pt2, pt3, pt4):
     [[pt3[0]], [pt3[1]]] = np.dot(matRotation, np.array([[pt3[0]], [pt3[1]], [1]]))
     ydim, xdim = imgRotation.shape[:2]
     imgOut = imgRotation[max(1, int(pt1[1])):min(ydim - 1, int(pt3[1])), max(1, int(pt1[0])):min(xdim - 1, int(pt3[0]))]
-    # height,width=imgOut.shape[:2]
     return imgOut
 
 
@@ -144,62 +139,6 @@ def subtitle_filter1(boxes, img_width, img_height):
 
     boxes = np.delete(boxes, temp, axis=0)
     return sort_box(boxes)
-
-
-# 字幕过滤2
-def subtitle_filter2(boxes, resize_height, origin_height, subtitle_height_list, canny_img2_list, output_process=False):
-    """
-    在进行canny图像提取之后再次进行过滤，大幅更新限制参数时使用较为宽松的限制条件，小幅更新时使用严格的限制条件
-    对以下情况进行过滤：1.字幕高度在合理范围之外，2.字幕位置（Y轴）在合理范围之外（严格条件下）
-    :param boxes:
-    :param resize_height:
-    :param origin_height:
-    :param subtitle_height_list:
-    :param canny_img2_list:
-    :param output_process:
-    :return:
-    """
-    # 条件收束前字幕高度限制
-    HEIGHT_MIN_DELTA = 0.01
-    HEIGHT_MAX_DELTA = 0.03
-    # 条件收束后字幕高度限制
-    HEIGHT_DELTA_STRICT = 0.01
-    # 条件收束后字幕Y轴位置限制
-    SUBTITLE_LOCATION_Y_DELTA = 0.02
-
-    temp = []
-
-    for index, subtitle_height in enumerate(subtitle_height_list):
-        if g_frame_num_with_subtitle < G_RAPID_UPDATE_FRAME:    # 大幅更新限制参数时应使用较宽松的限制条件
-            if subtitle_height < origin_height * (g_subtitle_height - HEIGHT_MIN_DELTA) \
-                    or subtitle_height > origin_height * (g_subtitle_height + HEIGHT_MAX_DELTA):    # 只对字幕高度进行限制
-                temp.append(index)
-
-                if output_process:
-                    print("loose restriction")
-                    print("subtitle_height:" + str(subtitle_height) + ", restriction: max:" + str(
-                        origin_height * (g_subtitle_height + HEIGHT_MAX_DELTA)) + " min:" + str(
-                        origin_height * (g_subtitle_height - HEIGHT_MIN_DELTA)))
-        else:   # 小幅更新限制参数时应使用较为严格的限制条件
-            if abs(subtitle_height / origin_height - g_subtitle_height) > HEIGHT_DELTA_STRICT \
-                    or boxes[index][1] < (g_top - SUBTITLE_LOCATION_Y_DELTA) * resize_height \
-                    or boxes[index][7] > (g_bottom + SUBTITLE_LOCATION_Y_DELTA) * resize_height:    # 对字幕高度及在Y轴上的位置进行严格限制
-                temp.append(index)
-
-                if output_process:
-                    print("tight restriction")
-                    print("subtitle_height:" + str(subtitle_height) + ", restriction: max:" + str(
-                        origin_height * (g_subtitle_height + HEIGHT_DELTA_STRICT)) + " , min:" + str(
-                        origin_height * (g_subtitle_height - HEIGHT_DELTA_STRICT)))
-                    print("boxes top:" + str(boxes[index][1]) + ", restriction: min:" + str(
-                        (g_top - SUBTITLE_LOCATION_Y_DELTA) * resize_height))
-                    print("boxes bottom:" + str(boxes[index][7]) + ", restriction: max:" + str(
-                        (g_bottom + SUBTITLE_LOCATION_Y_DELTA) * resize_height))
-
-    boxes = np.delete(boxes, temp, axis=0)
-    # 对用于比较相似度的canny图像列表也进行更新，去除不符合的图像
-    canny_img2_list = [canny_img2_list[i] for i in range(len(canny_img2_list)) if i not in temp]
-    return boxes, canny_img2_list
 
 
 # 获取原始尺寸下的坐标
@@ -278,52 +217,6 @@ def delete_overlap_get_scroll_list(text_recs, resize_im_height):
     result_text_recs = sorted(result_text_recs, key=lambda x: sum([x[1]]))
 
     return is_scroll, result_text_recs
-
-
-def update_subtitle_height_restriction(subtitle_height_list, text_recs, origin_img_height, resize_im_height, output_process=False):
-    """
-    更新字幕高度限制参数，在指定帧数前进行大幅更新，之后小幅更新
-    :param subtitle_height_list:
-    :param text_recs:
-    :param origin_img_height:
-    :param resize_im_height:
-    :param output_process:
-    :return:
-    """
-    global g_subtitle_height
-    global g_top
-    global g_bottom
-    global g_frame_num_with_subtitle
-
-    UPDATE_RATE_RAPID = 0.1
-    UPDATE_RATE_SLOW = 0.05
-
-    # 字幕最小高度（与preprocessing输出对比）
-    min_subtitle_height = G_MIN_SUBTITLE_HEIGHT * origin_img_height
-    max_subtitle_height = G_MAX_SUBTITLE_HEIGHT * origin_img_height
-
-    if subtitle_height_list and g_frame_num_with_subtitle < G_RAPID_UPDATE_FRAME:  # 存在字幕，且需要大幅度更新限制参数
-        index = randint(0, len(subtitle_height_list) - 1)  # 同一帧中检测到多个疑似字幕,则从中随机选择一个进行数据更新
-
-        if subtitle_height_list[index] > min_subtitle_height and subtitle_height_list[index] < max_subtitle_height:
-            g_subtitle_height = (1 - UPDATE_RATE_RAPID) * g_subtitle_height + UPDATE_RATE_RAPID * subtitle_height_list[index] / origin_img_height
-            g_top = (1 - UPDATE_RATE_RAPID) * g_top + UPDATE_RATE_RAPID * text_recs[index][1] / resize_im_height
-            g_bottom = (1 - UPDATE_RATE_RAPID) * g_bottom + UPDATE_RATE_RAPID * text_recs[index][7] / resize_im_height
-            g_frame_num_with_subtitle = g_frame_num_with_subtitle + 1
-
-    elif subtitle_height_list and g_frame_num_with_subtitle >= G_RAPID_UPDATE_FRAME:   # 存在字幕，且需要小幅度更新限制参数
-        index = randint(0, len(subtitle_height_list) - 1)
-
-        if subtitle_height_list[index] > min_subtitle_height and subtitle_height_list[index] < max_subtitle_height:
-            g_subtitle_height = (1 - UPDATE_RATE_SLOW) * g_subtitle_height + UPDATE_RATE_SLOW * subtitle_height_list[index] / origin_img_height
-            g_top = (1 - UPDATE_RATE_SLOW) * g_top + UPDATE_RATE_SLOW * text_recs[index][1] / resize_im_height
-            g_bottom = (1 - UPDATE_RATE_SLOW) * g_bottom + UPDATE_RATE_SLOW * text_recs[index][7] / resize_im_height
-            g_frame_num_with_subtitle = g_frame_num_with_subtitle + 1
-
-    if output_process:
-        print("height of subtitle:" + str(g_subtitle_height))
-        print("left_top_y:" + str(g_top))
-        print("left_bottom_y:" + str(g_bottom))
 
 
 def voting(origin_recs, frame_result, canny_img2_list, origin_img_height, origin_img_width, img_no, output_process=False):
@@ -412,13 +305,6 @@ def voting(origin_recs, frame_result, canny_img2_list, origin_img_height, origin
                         # 去掉上一帧同位置的投票结果（不从原来的结果中读取前一帧的投票结果），并新增当前帧结果
                         new_results_list.append({frame_result[i][1]: 1})
 
-                        # print("center_distance", distance)
-                        # print(related_late_ymin, related_late_ymax, last_recs[1], last_recs[7])
-                        # print(related_curr_ymin, related_curr_ymax, curr_recs[1], curr_recs[7])
-                        # cv2.imshow("last", g_canny_img_queue.queue[0][j][related_late_ymin:related_late_ymax, related_late_xmin:related_late_xmax])
-                        # cv2.imshow("curr", g_canny_img_queue.queue[1][i][related_curr_ymin:related_curr_ymax, related_curr_xmin:related_curr_xmax])
-                        # cv2.waitKey(0)
-
                     else:  # 匹配到，计算相似度的结果说明两个字幕相同
                         # 更新位置（按y轴坐标进行排序写入list），结果（value）+1[{result1:times1,result2:times2,...},{result1:times1,result2:times2,...},...]
                         result_dict = g_results_list[j]  # 读取该文本框在前一帧中的投票结果
@@ -443,75 +329,6 @@ def voting(origin_recs, frame_result, canny_img2_list, origin_img_height, origin
             g_results_list.append({rlt[1]: 1})
     if output_process:
         print(g_results_list)
-
-
-def model(img, img_no, video_name, output_path, output_process=False):
-    origin_img = img.copy()
-    origin_img_height = origin_img.shape[0]
-    origin_img_width = origin_img.shape[1]
-
-    text_recs, drawn_img, resize_img, resize_ratio = text_detect(origin_img, top=0.7, bottom=1, left=0, right=1)
-
-    resize_im_height = resize_img.shape[0]
-    resize_im_width = resize_img.shape[1]
-
-    # 第一次字幕过滤(位置信息)
-    text_recs = subtitle_filter1(text_recs, resize_im_width, resize_im_height)
-    if text_recs is None or len(text_recs) == 0:
-        return [], img, [], resize_ratio
-
-    # 获取原图坐标便于预处理
-    origin_recs = convert_to_origin_coordinate(text_recs, resize_ratio)
-
-    if output_process:
-        crop_img(img, video_name, output_path, origin_recs, img_no)
-
-    # crnn前预处理
-    origin_img = img.copy()
-    preprocessed_img, subtitle_height_list, canny_img2_list = preprocessing.p_picture(origin_recs, [False] * len(origin_recs), origin_img, img_no, video_name, output_path, 1)
-    #TODO： 1.mp4 4374帧字幕高度检测检测失常、拼接时纵向位置的偏差
-
-    # if output_process:
-    #     np.savetxt(
-    #         os.path.join(output_path, "subtitle_height_{}_{}.txt".format(video_name.split('/')[-1].split('.')[0], img_no)),
-    #         subtitle_height_list, fmt='%d')
-
-    # 更新字幕高度限制
-    update_subtitle_height_restriction(subtitle_height_list, text_recs, origin_img_height, resize_im_height, output_process=output_process)
-
-    # 第二次字幕过滤(高度,更精确的纵坐标)
-    text_recs, canny_img2_list = subtitle_filter2(text_recs, resize_im_height, origin_img_height, subtitle_height_list, canny_img2_list, output_process=output_process)
-    if text_recs is None or len(text_recs) == 0:
-        return [], img, [], resize_ratio
-
-    # 送入CRNN检测
-    result = crnnRec(resize_img, text_recs)
-
-    # 去除检测结果最前端非中文字符,出现重复字符的彻底解决方法应为重新训练
-    for key in result:
-        pattern = re.compile(u"^[^\u4e00-\u9fa5]+")
-        result[key][1] = re.sub(pattern, '', result[key][1])
-
-    # 根据位置对比是否同一字幕，进行投票
-    # 更新原图坐标
-    origin_recs = convert_to_origin_coordinate(text_recs, resize_ratio)
-    # 将result字典（index：信息）转换为列表，保持其按index排列
-    frame_result = [result[i] for i in result]
-    # 投票
-    voting(origin_recs, frame_result, canny_img2_list, origin_img_height, origin_img_width, img_no, output_process=output_process)
-
-    # 输出出现次数最多的结果
-    for index, data in enumerate(g_results_list):
-        for k in sorted(data, key=data.__getitem__, reverse=True):
-            if output_process:
-                print("result:" + k + ", times:" + str(data[k]))
-            result[int(index)][1] = k
-            break
-
-    if output_process:
-        return result, preprocessed_img, [False] * len(result), resize_ratio
-    else:
-        return result, origin_img, [False] * len(result), resize_ratio
 
 
 def model_news(img, img_no, video_name, output_path, output_process=False):
@@ -541,7 +358,7 @@ def model_news(img, img_no, video_name, output_path, output_process=False):
 
     # crnn前预处理
     origin_img = img.copy()
-    preprocessed_img, canny_img2_list = preprocessing.p_picture(origin_recs, is_scroll, origin_img, img_no, video_name, output_path, 2)
+    preprocessed_img, canny_img2_list = preprocessing.p_picture(origin_recs, is_scroll, origin_img, img_no, video_name, output_path)
 
     # 送入CRNN检测
     result = crnnRec(resize_img, text_recs)

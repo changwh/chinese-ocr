@@ -62,20 +62,12 @@ def delate_img(img, i):
 
 def wash_canny_picture(img):
     data_y = projection_y(img)
-    # data_x = projection_x(img)
 
     top = clean(data_y, img, 'y')   # top
-
-    # img = imutils.rotate_bound(img, 90)  # right
-    # clean(data_x, img, 'x')
 
     img = imutils.rotate_bound(img, 180)  # bottom
     data_y.reverse()
     bottom = clean(data_y, img, 'y')
-
-    # img = imutils.rotate_bound(img, 90)  # left
-    # data_x.reverse()
-    # clean(data_x, img, 'x')
 
     img = imutils.rotate_bound(img, 180)  # 恢复
 
@@ -84,11 +76,3 @@ def wash_canny_picture(img):
         subtitle_height = 0
 
     return img, subtitle_height
-
-
-# if __name__ == '__main__':
-    # img = cv.imread('canny_image.jpg')
-    # img, num = wash_canny_picture(img)
-
-    # plt.bar(range(len(data)), data)
-    # plt.show()
