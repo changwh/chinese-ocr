@@ -566,7 +566,7 @@ def model_news(img, img_no, video_name, output_path, output_process=False):
         return [], origin_img, [], resize_ratio, g_str_ui
 
     # 合并滚动字幕中重叠部分，并获取滚动字幕标记
-    is_scroll, text_recs = delete_overlap_get_scroll_list(text_recs, resize_im_height)
+    is_scroll, text_recs = delete_overlap_get_scroll_list(text_recs, resize_im_height, output_process=output_process)
     # TODO:画出重叠区域的框，验证算法是否正确
 
     origin_recs = convert_to_origin_coordinate(text_recs, resize_ratio)
