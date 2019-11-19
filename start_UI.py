@@ -60,6 +60,15 @@ class MainWindow(QMainWindow, UI.Ui_MainWindow):
             os.makedirs(output_path)
             self.tot_progress = end_frame - start_frame + 1
             self.textBrowser.clear()
+            # 输出视频相关
+            frame_height = int(video_capture.get(cv.CAP_PROP_FRAME_HEIGHT))
+            frame_width = int(video_capture.get(cv.CAP_PROP_FRAME_WIDTH))
+            # 创建视频容器
+            video_writer = cv.VideoWriter(
+                os.path.join(output_path, "{}_results.mp4".format(video_name.split('/')[-1].split('.')[0])),
+                cv.VideoWriter_fourcc(*'mp4v'),
+                video_capture.get(cv.CAP_PROP_FPS),
+                (frame_width, frame_height))
 
         for curent_frame in range(start_frame, end_frame + 1):
             # 若已执行到最后一帧，则使帧数输入框不为只读
@@ -87,6 +96,8 @@ class MainWindow(QMainWindow, UI.Ui_MainWindow):
             self.textBrowser.append("识别结果:")
             for key in result:
                 self.textBrowser.append(result[key][1])
+            
+            video_writer.write(frame)
 
             # 将得到的ndarray转换为pixmap
             img = cv.cvtColor(frame, cv.COLOR_BGR2RGB)

@@ -404,7 +404,6 @@ def voting(origin_recs, frame_result, canny_img2_list, origin_img_height, origin
 
 
 def model(img, img_no, video_name, output_path, output_process=False):
-
     global g_str_ui
     g_str_ui = ''
 
