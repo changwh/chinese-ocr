@@ -8,7 +8,7 @@ import numpy as np
 
 sys.path.append('ctpn')
 
-from math import *
+from math import sqrt, degrees, atan2, fabs, sin, cos, radians
 from PIL import Image
 from random import randint
 from ctpn.text_detect import text_detect
@@ -46,6 +46,8 @@ g_frame_num_with_subtitle = 0
 g_results_list = []
 g_canny_img_queue = Queue(G_COMPATE_FRAME_NUM)
 g_recs_queue = Queue(G_COMPATE_FRAME_NUM)
+# ui显示用的字符串
+g_str_ui = ""
 
 
 def crnnRec(im, text_recs):
@@ -167,6 +169,8 @@ def subtitle_filter2(boxes, resize_height, origin_height, subtitle_height_list, 
     # 条件收束后字幕Y轴位置限制
     SUBTITLE_LOCATION_Y_DELTA = 0.02
 
+    global g_str_ui
+
     temp = []
 
     for index, subtitle_height in enumerate(subtitle_height_list):
@@ -176,7 +180,11 @@ def subtitle_filter2(boxes, resize_height, origin_height, subtitle_height_list, 
                 temp.append(index)
 
                 if output_process:
+                    g_str_ui += "loose restriction\n"
                     print("loose restriction")
+                    g_str_ui += "subtitle_height:" + str(subtitle_height) + ", restriction: max:" + str(
+                        origin_height*(g_subtitle_height + HEIGHT_MAX_DELTA)) + " min:" + str(
+                        origin_height*(g_subtitle_height - HEIGHT_MIN_DELTA)) + "\n"
                     print("subtitle_height:" + str(subtitle_height) + ", restriction: max:" + str(
                         origin_height * (g_subtitle_height + HEIGHT_MAX_DELTA)) + " min:" + str(
                         origin_height * (g_subtitle_height - HEIGHT_MIN_DELTA)))
@@ -187,14 +195,22 @@ def subtitle_filter2(boxes, resize_height, origin_height, subtitle_height_list, 
                 temp.append(index)
 
                 if output_process:
+                    g_str_ui += "tight restriction\n"
                     print("tight restriction")
+                    g_str_ui += "subtitle_height:" + str(subtitle_height) + ", restriction: max:" + str(
+                        origin_height*(g_subtitle_height + HEIGHT_DELTA_STRICT)) + " , min:" + str(
+                        origin_height*(g_subtitle_height - HEIGHT_DELTA_STRICT)) + "\n"
                     print("subtitle_height:" + str(subtitle_height) + ", restriction: max:" + str(
-                        origin_height * (g_subtitle_height + HEIGHT_DELTA_STRICT)) + " , min:" + str(
-                        origin_height * (g_subtitle_height - HEIGHT_DELTA_STRICT)))
+                        origin_height*(g_subtitle_height + HEIGHT_DELTA_STRICT)) + " , min:" + str(
+                        origin_height*(g_subtitle_height - HEIGHT_DELTA_STRICT)))
+                    g_str_ui += "boxes top:" + str(boxes[index][1]) + ", restriction: min:" + str(
+                        (g_top - SUBTITLE_LOCATION_Y_DELTA)*resize_height) + "\n"
                     print("boxes top:" + str(boxes[index][1]) + ", restriction: min:" + str(
-                        (g_top - SUBTITLE_LOCATION_Y_DELTA) * resize_height))
+                        (g_top - SUBTITLE_LOCATION_Y_DELTA)*resize_height))
+                    g_str_ui += "boxes bottom:" + str(boxes[index][7]) + ", restriction: max:" + str(
+                        (g_bottom + SUBTITLE_LOCATION_Y_DELTA)*resize_height) + "\n"
                     print("boxes bottom:" + str(boxes[index][7]) + ", restriction: max:" + str(
-                        (g_bottom + SUBTITLE_LOCATION_Y_DELTA) * resize_height))
+                        (g_bottom + SUBTITLE_LOCATION_Y_DELTA)*resize_height))
 
     boxes = np.delete(boxes, temp, axis=0)
     # 对用于比较相似度的canny图像列表也进行更新，去除不符合的图像
@@ -229,7 +245,7 @@ def crop_img(img, video_name, output_path, boxes, frameNum):
                                  "{}_{}_{}.jpg".format(base_name.split('.')[0], frameNum, str(i))), cropped)
 
 
-def delete_overlap_get_scroll_list(text_recs, resize_im_height):
+def delete_overlap_get_scroll_list(text_recs, resize_im_height, output_process=False):
     """
     返回是否为滚动字幕的列表，以及合并了滚动字幕中重叠部分的字幕框
     :param text_recs:
@@ -242,6 +258,8 @@ def delete_overlap_get_scroll_list(text_recs, resize_im_height):
     result_text_recs = []
 
     MIN_SCROLL_Y_TOP = 0.88
+
+    global str_ui
 
     for i in range(len(text_recs)):
         # TODO:考虑上方符合要求，但是下方不符合要求的情况，这样处理会出现bug
@@ -263,7 +281,9 @@ def delete_overlap_get_scroll_list(text_recs, resize_im_height):
                 # 检测是否有重叠字幕，有则合并重叠字幕，否则将直接将其添加到no_overlap中
                 union = get_union_coordinate(rec, text_recs[index])
                 if union:
-                    print("overlap!!!\tunion_coordinate: ", union)
+                    if output_process:
+                        str_ui += "overlap!!!\tunion_coordinate: " + union + "\n"
+                        print("overlap!!!\tunion_coordinate: ", union)
                     # 更新rec到no_scroll
                     no_overlap[i] = [union[2], union[0], union[3], union[0], union[2], union[1], union[3], union[1]]
                     break
@@ -295,6 +315,8 @@ def update_subtitle_height_restriction(subtitle_height_list, text_recs, origin_i
     global g_bottom
     global g_frame_num_with_subtitle
 
+    global g_str_ui
+
     UPDATE_RATE_RAPID = 0.1
     UPDATE_RATE_SLOW = 0.05
 
@@ -321,6 +343,7 @@ def update_subtitle_height_restriction(subtitle_height_list, text_recs, origin_i
             g_frame_num_with_subtitle = g_frame_num_with_subtitle + 1
 
     if output_process:
+        g_str_ui += "height of subtitle:" + str(g_subtitle_height) + "\n" + "left_top_y:" + str(g_top) + "\n" + "left_bottom_y:" + str(g_bottom) + "\n"
         print("height of subtitle:" + str(g_subtitle_height))
         print("left_top_y:" + str(g_top))
         print("left_bottom_y:" + str(g_bottom))
@@ -338,6 +361,8 @@ def voting(origin_recs, frame_result, canny_img2_list, origin_img_height, origin
     :param output_process:
     :return:
     """
+    global g_str_ui
+
     # 将当前帧的canny2图像,origin_recs写入队列
     if len(canny_img2_list) > 0:
         if g_canny_img_queue.is_full():  # 如果某个队列已满，需要一起出队一个元素
@@ -403,11 +428,13 @@ def voting(origin_recs, frame_result, canny_img2_list, origin_img_height, origin
                         hash_type="perception")
 
                     if output_process:
+                        g_str_ui += "the difference between" + str(img_no) + "_" + str(i) + "and " + str(img_no - 1) + "_" + str(j) + ":" + str(difference) + "\n"
                         print("the difference between", str(img_no), "_", str(i), "and ", str(img_no - 1), "_", str(j),
                               ":", str(difference))
 
                     if difference >= G_DIFFERENT_THRESHOLD:  # 匹配到，但是计算相似度的结果说明两个字幕不同
                         if output_process:
+                            g_str_ui += str(img_no) + "_" + str(i) + " different from" + str(img_no - 1) + "_" + str(j) + "\n"
                             print(str(img_no), "_", str(i), " different from", str(img_no - 1), "_", str(j))
                         # 去掉上一帧同位置的投票结果（不从原来的结果中读取前一帧的投票结果），并新增当前帧结果
                         new_results_list.append({frame_result[i][1]: 1})
@@ -442,10 +469,14 @@ def voting(origin_recs, frame_result, canny_img2_list, origin_img_height, origin
         for rlt in frame_result:
             g_results_list.append({rlt[1]: 1})
     if output_process:
+        g_str_ui += str(g_results_list) + "\n"
         print(g_results_list)
 
 
 def model(img, img_no, video_name, output_path, output_process=False):
+    global g_str_ui
+    g_str_ui = ''
+
     origin_img = img.copy()
     origin_img_height = origin_img.shape[0]
     origin_img_width = origin_img.shape[1]
@@ -458,7 +489,7 @@ def model(img, img_no, video_name, output_path, output_process=False):
     # 第一次字幕过滤(位置信息)
     text_recs = subtitle_filter1(text_recs, resize_im_width, resize_im_height)
     if text_recs is None or len(text_recs) == 0:
-        return [], img, [], resize_ratio
+        return [], img, [], resize_ratio, g_str_ui
 
     # 获取原图坐标便于预处理
     origin_recs = convert_to_origin_coordinate(text_recs, resize_ratio)
@@ -482,7 +513,7 @@ def model(img, img_no, video_name, output_path, output_process=False):
     # 第二次字幕过滤(高度,更精确的纵坐标)
     text_recs, canny_img2_list = subtitle_filter2(text_recs, resize_im_height, origin_img_height, subtitle_height_list, canny_img2_list, output_process=output_process)
     if text_recs is None or len(text_recs) == 0:
-        return [], img, [], resize_ratio
+        return [], img, [], resize_ratio, g_str_ui
 
     # 送入CRNN检测
     result = crnnRec(resize_img, text_recs)
@@ -504,17 +535,21 @@ def model(img, img_no, video_name, output_path, output_process=False):
     for index, data in enumerate(g_results_list):
         for k in sorted(data, key=data.__getitem__, reverse=True):
             if output_process:
+                g_str_ui += "result:" + k + ", times:" + str(data[k]) + "\n"
                 print("result:" + k + ", times:" + str(data[k]))
             result[int(index)][1] = k
             break
 
     if output_process:
-        return result, preprocessed_img, [False] * len(result), resize_ratio
+        return result, preprocessed_img, [False] * len(result), resize_ratio, g_str_ui
     else:
-        return result, origin_img, [False] * len(result), resize_ratio
+        return result, origin_img, [False] * len(result), resize_ratio, g_str_ui
 
 
 def model_news(img, img_no, video_name, output_path, output_process=False):
+    global g_str_ui
+    g_str_ui = ''
+
     origin_img = img.copy()
     origin_img_height = origin_img.shape[0]
     origin_img_width = origin_img.shape[1]
@@ -528,7 +563,7 @@ def model_news(img, img_no, video_name, output_path, output_process=False):
     # 第一次字幕过滤(位置信息)
     text_recs = subtitle_filter1(text_recs, resize_im_width, resize_im_height)
     if text_recs is None or len(text_recs) == 0:
-        return [], origin_img, [], resize_ratio
+        return [], origin_img, [], resize_ratio, g_str_ui
 
     # 合并滚动字幕中重叠部分，并获取滚动字幕标记
     is_scroll, text_recs = delete_overlap_get_scroll_list(text_recs, resize_im_height)
@@ -569,11 +604,12 @@ def model_news(img, img_no, video_name, output_path, output_process=False):
     for index, data in enumerate(g_results_list):
         for k in sorted(data, key=data.__getitem__, reverse=True):
             if output_process:
+                g_str_ui += "result:" + k + ", times:" + str(data[k]) + "\n"
                 print("result:" + k + ", times:" + str(data[k]))
             result[int(index)][1] = k
             break
 
     if output_process:
-        return result, preprocessed_img, is_scroll, resize_ratio
+        return result, preprocessed_img, is_scroll, resize_ratio, g_str_ui
     else:
-        return result, origin_img, is_scroll, resize_ratio
+        return result, origin_img, is_scroll, resize_ratio, g_str_ui
