@@ -16,7 +16,7 @@ def parse_arguments():
         type=str,
         nargs="?",
         help="The input file to be processed",
-        default="/home/user/PycharmProjects/text-detection-ctpn/data/video2/1.mp4"
+        default="/data/changweihong/data/crnn_things/test_video/news/1.mp4"
     )
     parser.add_argument(
         "-o",
@@ -24,7 +24,7 @@ def parse_arguments():
         type=str,
         nargs="?",
         help="The output path to store result",
-        default="/home/user/test"
+        default="/data/changweihong/data/crnn_things/news_result2"
     )
     parser.add_argument(
         "-sf",
@@ -55,7 +55,7 @@ def parse_arguments():
         "--output_process",
         action="store_true",
         help="Define whether output all the process result",
-        default=False
+        default=True
     )
     return parser.parse_args()
 

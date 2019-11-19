@@ -100,6 +100,6 @@ def test_ctpn(input_path_list, output_path, start_frame=None, end_frame=None, st
 
 
 if __name__ == '__main__':
-    test_ctpn(["/home/user/PycharmProjects/text-detection-ctpn/data/news/2.mp4"],
-               "/home/user/mytest25",
-               start_frame=2000, stride=25)
+    test_ctpn(["/home/user/PycharmProjects/text-detection-ctpn-modify/data/news/1.mp4"],
+               "/home/user/mytest26",
+               start_frame=2000, stride=100)
