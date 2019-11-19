@@ -19,7 +19,7 @@ def dilate(img, dilate_kernel=5):
 def filter_canny_with_thresh(thresh1, canny_img):
     row = thresh1.shape[0]
     col = thresh1.shape[1]
-
+    # TODO:对thresh归一化(/255?)，进行矩阵计算？首先需要验证thresh1是否只有255和0两个值
     for i in range(row):
         for j in range(col):
             if thresh1[i, j] == 255 and canny_img[i, j] == 255:
@@ -34,14 +34,14 @@ def main(left, top, right, bottom, img, videoName, outputPath, frameNum, index):
 
     roi = img[top:bottom, left:right]
 
-    # 读取灰度图
-    gray_image = cv.cvtColor(roi, cv.COLOR_BGR2GRAY)
-
     # 边缘检测得到边缘图片
     canny_img = cv.Canny(roi, 40, 120)  # 与视频清晰度相关,清晰度越高,阈值可相应调高(1:3)
     # cv.imshow('canny 1', canny_img)
     cv.imwrite(os.path.join(outputPath, "cropped_pic_{}_{}".format(base_name.split('.')[0], frameNum),
                             "1_canny_{}_{}_{}.jpg".format(base_name.split('.')[0], frameNum, index)), canny_img)
+
+    # 读取灰度图
+    gray_image = cv.cvtColor(roi, cv.COLOR_BGR2GRAY)
 
     # 阈值处理
     _, thresh1 = cv.threshold(gray_image, 225, 255, cv.THRESH_BINARY)

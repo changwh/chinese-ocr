@@ -9,7 +9,7 @@ from ctpn.lib.fast_rcnn.test import test_ctpn
 def load_tf_model():
     cfg.TEST.HAS_RPN = True  # Use RPN for proposals
     # init session
-    gpu_options = tf.GPUOptions(per_process_gpu_memory_fraction=0.65)
+    gpu_options = tf.GPUOptions(per_process_gpu_memory_fraction=0.65, allow_growth=True)
     config = tf.ConfigProto(allow_soft_placement=True, gpu_options=gpu_options)
     sess = tf.Session(config=config)
     # load network

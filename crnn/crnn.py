@@ -79,5 +79,3 @@ def crnnOcr(image):
              sim_pred=sim_pred[1:]
 
        return sim_pred
-       
-
