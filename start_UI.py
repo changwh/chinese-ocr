@@ -25,6 +25,28 @@ class MainWindow(QMainWindow, UI.Ui_MainWindow):
         self.setupUi(self)
         self.graphicsView.setScene(self.scene)
 
+    def closeEvent(self, event):
+        """
+        重写closeEvent方法，实现dialog窗体关闭时执行一些代码
+        :param event: close()触发的事件
+        :return: None
+        """
+        reply = QtWidgets.QMessageBox.question(self,
+                                               '本程序',
+                                               "是否要退出程序？",
+                                               QtWidgets.QMessageBox.Yes | QtWidgets.QMessageBox.No,
+                                               QtWidgets.QMessageBox.No)
+        if reply == QtWidgets.QMessageBox.Yes:
+            try:
+                self.video_writer.release()
+            except AttributeError:
+                pass
+            finally:
+                event.accept()
+                sys.exit()
+        else:
+            event.ignore()
+
     # call Detector
     def start_detect(self):
         video_name = self.lineEditInputPath.text()
@@ -191,7 +213,7 @@ class MainWindow(QMainWindow, UI.Ui_MainWindow):
     # exit
     @pyqtSlot()
     def on_pushButtonExit_clicked(self):
-        sys.exit()
+        self.close()
 
 
 if __name__ == "__main__":
