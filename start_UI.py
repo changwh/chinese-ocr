@@ -49,6 +49,8 @@ class MainWindow(QMainWindow, UI.Ui_MainWindow):
             self.textBrowser.append("帧数设置错误！起始帧应小于结束帧")
             self.LE_start.setReadOnly(False)
             self.LE_end.setReadOnly(False)
+            self.pushButtonInputPath.setEnabled(True)
+            self.pushButtonOutputPath.setEnabled(True)
             self.start_pause_switcher()
             return
 
@@ -64,7 +66,7 @@ class MainWindow(QMainWindow, UI.Ui_MainWindow):
             frame_height = int(video_capture.get(cv.CAP_PROP_FRAME_HEIGHT))
             frame_width = int(video_capture.get(cv.CAP_PROP_FRAME_WIDTH))
             # 创建视频容器
-            video_writer = cv.VideoWriter(
+            self.video_writer = cv.VideoWriter(
                 os.path.join(output_path, "{}_results.mp4".format(video_name.split('/')[-1].split('.')[0])),
                 cv.VideoWriter_fourcc(*'mp4v'),
                 video_capture.get(cv.CAP_PROP_FPS),
@@ -75,6 +77,8 @@ class MainWindow(QMainWindow, UI.Ui_MainWindow):
             if curent_frame == end_frame:
                 self.LE_start.setReadOnly(False)
                 self.LE_end.setReadOnly(False)
+                self.pushButtonInputPath.setEnabled(True)
+                self.pushButtonOutputPath.setEnabled(True)
 
             # 暂停时记录当前帧数
             if self.is_pause:
@@ -96,8 +100,8 @@ class MainWindow(QMainWindow, UI.Ui_MainWindow):
             self.textBrowser.append("识别结果:")
             for key in result:
                 self.textBrowser.append(result[key][1])
-            
-            video_writer.write(frame)
+
+            self.video_writer.write(frame)
 
             # 将得到的ndarray转换为pixmap
             img = cv.cvtColor(frame, cv.COLOR_BGR2RGB)
@@ -125,6 +129,7 @@ class MainWindow(QMainWindow, UI.Ui_MainWindow):
             self.textBrowser.append("输出路径:" + self.output_path)
             self.textBrowser.append("----------------------finished----------------------")
             self.start_pause_switcher()
+            self.video_writer.release()
 
     def start_pause_switcher(self):
         # 控制开始停止
@@ -158,6 +163,8 @@ class MainWindow(QMainWindow, UI.Ui_MainWindow):
         # 设置开始帧和结束帧输入框为只读
         self.LE_start.setReadOnly(True)
         self.LE_end.setReadOnly(True)
+        self.pushButtonInputPath.setEnabled(False)
+        self.pushButtonOutputPath.setEnabled(False)
 
         # 开始暂停显示切换，按键显示为start时点击调用检测程序
         self.start_pause_switcher()
