@@ -24,7 +24,7 @@ def parse_arguments():
         type=str,
         nargs="?",
         help="The output path to store frame images",
-        default="/data/changweihong/data/crnn_things/news_result2"
+        default="/data/changweihong/data/crnn_things/news_result/test2"
     )
     parser.add_argument(
         "-sf",
@@ -66,6 +66,7 @@ def start_video(input_file, output_path, start_frame, end_frame, stride, output_
     os.makedirs(output_path)
 
     print(input_file)
+    base_name = input_file.split('/')[-1].split('.')[0]
 
     video_capture = cv2.VideoCapture(input_file)
     frame_num = start_frame
@@ -78,47 +79,53 @@ def start_video(input_file, output_path, start_frame, end_frame, stride, output_
     frame_width = int(video_capture.get(cv2.CAP_PROP_FRAME_WIDTH))
     # 创建视频容器
     video_writer = cv2.VideoWriter(
-        os.path.join(output_path, "{}_results.mp4".format(input_file.split('/')[-1].split('.')[0])),
+        os.path.join(output_path, "{}_results.mp4".format(base_name)),
         cv2.VideoWriter_fourcc(*'mp4v'),
         video_capture.get(cv2.CAP_PROP_FPS),
         (frame_width, frame_height))
 
-    while success:
-        t = time.time()
+    with open(os.path.join(output_path, "{}_result.txt".format(base_name)), "a+", encoding="utf-8") as result_f:
+        while success:
+            t = time.time()
 
-        # 根据需要指定结束帧
-        if end_frame != 0:  # 限制了结束帧，到结束帧停止
-            if frame_num > end_frame:
-                video_capture.release()
-                break
+            # 根据需要指定结束帧
+            if end_frame != 0:  # 限制了结束帧，到结束帧停止
+                if frame_num > end_frame:
+                    video_capture.release()
+                    break
 
-        result, frame, is_scroll, ratio, _ = model.model_news(frame, frame_num, input_file, output_path, output_process=output_process)
-        print("Frame number:{}, It takes time:{}s".format(frame_num, time.time() - t))
-        print("---------------------------------------")
-        print("识别结果:")
+            result, frame, is_scroll, ratio, str_ui = model.model_news(frame, frame_num, input_file, output_path, output_process=output_process)
+            print("Frame number:{}, It takes time:{}s".format(frame_num, time.time() - t))
+            print("---------------------------------------")
+            print("识别结果:")
 
-        for key in result:
-            print(result[key][1])
+            with open(os.path.join(output_path, "{}_{}.txt".format(base_name, frame_num)), "w", encoding="utf-8") as f:
+                for key in result:
+                    print(result[key][1])
+                    f.write(str(result[key][0]) + "\t" + result[key][1] + "\n")
 
-            # 在视频中嵌入识别结果
-            if is_scroll[key] is False:
-                frame = cv2_img_add_text(frame, result[key][1], int(result[key][0][0] / ratio),
-                                            int(result[key][0][1] / ratio) - 120,
-                                            text_color=(0, 255, 0), text_size=40)
-            else:
-                frame = cv2_img_add_text(frame, result[key][1], int(result[key][0][0] / ratio),
-                                            int(result[key][0][1] / ratio) - 120,
-                                            text_color=(255, 0, 0), text_size=40)
+                    # 在视频中嵌入识别结果
+                    if is_scroll[key] is False:
+                        frame = cv2_img_add_text(frame, result[key][1], int(result[key][0][0] / ratio),
+                                                    int(result[key][0][1] / ratio) - 120,
+                                                    text_color=(0, 255, 0), text_size=40)
+                    else:
+                        frame = cv2_img_add_text(frame, result[key][1], int(result[key][0][0] / ratio),
+                                                    int(result[key][0][1] / ratio) - 120,
+                                                    text_color=(255, 0, 0), text_size=40)
 
-        # 将加框后图片拼接成视频
-        video_writer.write(frame)
-        cv2.imwrite(os.path.join(output_path, "final_{}_{}.jpg".format(input_file.split('/')[-1].split('.')[0], str(frame_num))), frame)
+            result_f.write("---------------------------video name: " + input_file + "; frame num: " + str(frame_num) + " ---------------------------\n")
+            result_f.write(str_ui)
 
-        # 根据需要指定步长
-        frame_num += stride
-        video_capture.set(1, frame_num)
+            # 将加框后图片拼接成视频
+            video_writer.write(frame)
+            cv2.imwrite(os.path.join(output_path, "final_{}_{}.jpg".format(base_name, str(frame_num))), frame)
 
-        success, frame = video_capture.read()
+            # 根据需要指定步长
+            frame_num += stride
+            video_capture.set(1, frame_num)
+
+            success, frame = video_capture.read()
 
     print(output_path)
 
@@ -129,6 +136,8 @@ def start_video_byframe(video_name, output_path, video_capture, frame_num, outpu
     video_capture.set(1, int(frame_num))
     success, frame = video_capture.read()
 
+    base_name = video_name.split('/')[-1].split('.')[0]
+
     if success:
         t = time.time()
 
@@ -137,21 +146,28 @@ def start_video_byframe(video_name, output_path, video_capture, frame_num, outpu
         print("Frame number:{}, It takes time:{}s".format(frame_num, time.time() - t))
         print("---------------------------------------")
         print("识别结果:")
-        for key in result:
-            print(result[key][1])
 
-            # 在视频中嵌入识别结果
-            if is_scroll[key] is False:
-                frame = cv2_img_add_text(frame, result[key][1], int(result[key][0][0] / ratio),
-                                            int(result[key][0][1] / ratio) - 120,
-                                            text_color=(0, 255, 0), text_size=40)
-            else:
-                frame = cv2_img_add_text(frame, result[key][1], int(result[key][0][0] / ratio),
-                                            int(result[key][0][1] / ratio) - 120,
-                                            text_color=(255, 0, 0), text_size=40)
+        with open(os.path.join(output_path, "{}_result.txt".format(base_name)), "a+", encoding="utf-8") as result_f:
+            result_f.write("---------------------------video name: " + video_name + "; frame num: " + str(frame_num) + " ---------------------------\n")
+            result_f.write(str_ui)
+
+        with open(os.path.join(output_path, "{}_{}.txt".format(base_name, frame_num)), "w", encoding="utf-8") as f:
+            for key in result:
+                print(result[key][1])
+                f.write(str(result[key][0]) + "\t" + result[key][1] + "\n")
+
+                # 在视频中嵌入识别结果
+                if is_scroll[key] is False:
+                    frame = cv2_img_add_text(frame, result[key][1], int(result[key][0][0] / ratio),
+                                                int(result[key][0][1] / ratio) - 120,
+                                                text_color=(0, 255, 0), text_size=40)
+                else:
+                    frame = cv2_img_add_text(frame, result[key][1], int(result[key][0][0] / ratio),
+                                                int(result[key][0][1] / ratio) - 120,
+                                                text_color=(255, 0, 0), text_size=40)
 
         # 将加框后图片保存
-        cv2.imwrite(os.path.join(output_path, "final_{}_{}.jpg".format(video_name.split('/')[-1].split('.')[0], str(frame_num))), frame)
+        cv2.imwrite(os.path.join(output_path, "final_{}_{}.jpg".format(base_name, str(frame_num))), frame)
 
     return result, frame, str_ui
 
