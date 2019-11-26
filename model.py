@@ -319,28 +319,46 @@ def voting(origin_recs, frame_result, canny_img2_list, origin_img_height, origin
 
     if g_canny_img_queue.is_full() and g_results_list:  # 队列满，则说明队列中存有前后两帧的canny_list，可进行相似对比
         for i, curr_canny2 in enumerate(g_canny_img_queue.queue[1]):  # 遍历当前帧的canny_list
+            curr_rec = g_recs_queue.queue[1][i]
+            # 简化坐标：8 itmes -> 4 items
+            curr_top = min(curr_rec[1], curr_rec[3])
+            curr_bottom = max(curr_rec[5], curr_rec[7])
+            curr_left = min(curr_rec[0], curr_rec[4])
+            curr_right = max(curr_rec[2], curr_rec[6])
+            simp_curr_rec = [curr_top, curr_bottom, curr_left, curr_right]
             # 计算文本框中心点坐标
-            curr_recs = g_recs_queue.queue[1][i]
-            curr_center_x = (curr_recs[0] + curr_recs[6]) * 0.5
-            curr_center_y = (curr_recs[1] + curr_recs[7]) * 0.5
+            curr_center_x = (curr_left + curr_right) * 0.5
+            curr_center_y = (curr_top + curr_bottom) * 0.5
             for j, last_canny2 in enumerate(g_canny_img_queue.queue[0]):  # 遍历前一帧的canny_list
+                last_rec = g_recs_queue.queue[0][j]
+                # 简化坐标：8 itmes -> 4 items
+                last_top = min(last_rec[1], last_rec[3])
+                last_bottom = max(last_rec[5], last_rec[7])
+                last_left = min(last_rec[0], last_rec[4])
+                last_right = max(last_rec[2], last_rec[6])
+                simp_last_rec = [last_top, last_bottom, last_left, last_right]
                 # 计算文本框中心点
-                last_recs = g_recs_queue.queue[0][j]
-                last_center_x = (last_recs[0] + last_recs[6]) * 0.5
-                last_center_y = (last_recs[1] + last_recs[7]) * 0.5
+                last_center_x = (last_left + last_right) * 0.5
+                last_center_y = (last_top + last_bottom) * 0.5
 
                 # 计算前后两帧中两个文本框中心点的距离
                 distance = sqrt((last_center_x - curr_center_x) ** 2 + (last_center_y - curr_center_y) ** 2)
 
                 if distance < DISTANCE_RESTRICT_PER * max_distance:  # 距离小于阈值，能匹配到
                     # 取x轴上的重叠区域
-                    x_list = sorted([max(last_recs[0], last_recs[4]), min(last_recs[2], last_recs[6]), max(curr_recs[0], curr_recs[4]), min(curr_recs[2], curr_recs[6])])
+                    x_list = sorted([last_left, last_right, curr_left, curr_right])
+                    # 检测前后两帧字幕图像是否重叠
+                    if (x_list[0] != x_list[1] and x_list[0] in simp_curr_rec and x_list[1] in simp_curr_rec) or (x_list[0] != x_list[1] and x_list[0] in simp_last_rec and x_list[1] in simp_last_rec):
+                        raise ValueError("Two subtitles are not overlapped! One is {}, another is {}".format(str(simp_last_rec), str(simp_curr_rec)))
                     canny_part_xmin = x_list[1]
                     canny_part_xmax = x_list[2]
                     canny_len = canny_part_xmax - canny_part_xmin
 
                     # 取y轴上的重叠区域
-                    y_list = sorted([min(last_recs[1], last_recs[3]), max(last_recs[5], last_recs[7]), min(curr_recs[1], curr_recs[3]), max(curr_recs[5], curr_recs[7])])
+                    y_list = sorted([last_top, last_bottom, curr_top, curr_bottom])
+                    # 检测前后两帧字幕图像是否重叠
+                    if (y_list[0] != y_list[1] and y_list[0] in simp_curr_rec and y_list[1] in simp_curr_rec) or (y_list[0] != y_list[1] and y_list[0] in simp_last_rec and y_list[1] in simp_last_rec):
+                        raise ValueError("Two subtitles are not overlapped! One is {}, another is {}".format(str(simp_last_rec), str(simp_curr_rec)))
                     canny_part_ymin = y_list[1]
                     canny_part_ymax = y_list[2]
 
@@ -350,18 +368,18 @@ def voting(origin_recs, frame_result, canny_img2_list, origin_img_height, origin
                     x_max = (canny_part_xmin + canny_part_xmax) // 2 + compute_part_len
 
                     # 转换成相对坐标
-                    related_late_xmin = int(x_min - max(last_recs[0], last_recs[4]))
-                    related_late_xmax = int(x_max - max(last_recs[0], last_recs[4]))
-                    related_curr_xmin = int(x_min - max(curr_recs[0], curr_recs[4]))
-                    related_curr_xmax = int(x_max - max(curr_recs[0], curr_recs[4]))
-                    related_late_ymin = int(canny_part_ymin - min(last_recs[1], last_recs[3]))
-                    related_late_ymax = int(canny_part_ymax - min(last_recs[1], last_recs[3]))
-                    related_curr_ymin = int(canny_part_ymin - min(curr_recs[1], curr_recs[3]))
-                    related_curr_ymax = int(canny_part_ymax - min(curr_recs[1], curr_recs[3]))
+                    related_last_xmin = int(x_min - last_left)
+                    related_last_xmax = int(x_max - last_left)
+                    related_curr_xmin = int(x_min - curr_left)
+                    related_curr_xmax = int(x_max - curr_left)
+                    related_last_ymin = int(canny_part_ymin - last_top)
+                    related_last_ymax = int(canny_part_ymax - last_top)
+                    related_curr_ymin = int(canny_part_ymin - curr_top)
+                    related_curr_ymax = int(canny_part_ymax - curr_top)
 
                     # 计算图片相似度
-                    old_img = g_canny_img_queue.queue[0][j][related_late_ymin:related_late_ymax,
-                                                            related_late_xmin:related_late_xmax]
+                    old_img = g_canny_img_queue.queue[0][j][related_last_ymin:related_last_ymax,
+                                                            related_last_xmin:related_last_xmax]
                     new_img = g_canny_img_queue.queue[1][i][related_curr_ymin:related_curr_ymax,
                                                             related_curr_xmin:related_curr_xmax]
                     difference = get_img_difference(old_img, new_img, hash_type="perception")
