@@ -159,6 +159,7 @@ def get_union_coordinate(location_a, location_b):
 
 
 def draw_ctpn_result_boxes(location_list, img):
+    return_img = img.copy()
     c = (0, 255, 0)
 
     for index in range(len(location_list)):
@@ -166,12 +167,12 @@ def draw_ctpn_result_boxes(location_list, img):
         bottom = location_list[index][1]
         left = location_list[index][2]
         right = location_list[index][3]
-        cv2.line(img, (left, top), (right, top), c, 2)
-        cv2.line(img, (left, top), (left, bottom), c, 2)
-        cv2.line(img, (right, bottom), (right, top), c, 2)
-        cv2.line(img, (left, bottom), (right, bottom), c, 2)
+        cv2.line(return_img, (left, top), (right, top), c, 2)
+        cv2.line(return_img, (left, top), (left, bottom), c, 2)
+        cv2.line(return_img, (right, bottom), (right, top), c, 2)
+        cv2.line(return_img, (left, bottom), (right, bottom), c, 2)
 
-    return img
+    return return_img
 
 
 if __name__ == '__main__':
