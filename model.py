@@ -390,9 +390,10 @@ def voting(origin_recs, frame_result, canny_img2_list, origin_img_height, origin
                               ":", str(difference))
 
                     if difference >= G_DIFFERENT_THRESHOLD:  # 匹配到，但是计算相似度的结果说明两个字幕不同
-                        # from random import uniform
-                        # cv2.imwrite(os.path.join(output_path, "{}_part_{}.jpg".format(img_no - 1, uniform(0, 1))), old_img)
-                        # cv2.imwrite(os.path.join(output_path, "{}_part_{}.jpg".format(img_no, uniform(0, 1))), new_img)
+                        # from random import uniform, randint
+                        # r = round(uniform(0, 1), 3)
+                        # cv2.imwrite(os.path.join(output_path, "{}_{}_part_{}_{}.jpg".format(img_no, img_no - 1, r, round(uniform(0, 1), 3))), old_img)
+                        # cv2.imwrite(os.path.join(output_path, "{}_{}_part_{}_{}.jpg".format(img_no, img_no - 1, r, round(uniform(0, 1), 3))), new_img)
                         if output_process:
                             g_str_ui += str(img_no) + "_" + str(i) + " different from" + str(img_no - 1) + "_" + str(j) + "\n"
                             print(str(img_no), "_", str(i), " different from", str(img_no - 1), "_", str(j))
