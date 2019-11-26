@@ -328,16 +328,19 @@ def voting(origin_recs, frame_result, canny_img2_list, origin_img_height, origin
                 last_recs = g_recs_queue.queue[0][j]
                 last_center_x = (last_recs[0] + last_recs[6]) * 0.5
                 last_center_y = (last_recs[1] + last_recs[7]) * 0.5
-                # 计算前后两帧中两个文本框中心点的距离 TODO:设置水平与竖直的不同权重
+
+                # 计算前后两帧中两个文本框中心点的距离
                 distance = sqrt((last_center_x - curr_center_x) ** 2 + (last_center_y - curr_center_y) ** 2)
 
                 if distance < DISTANCE_RESTRICT_PER * max_distance:  # 距离小于阈值，能匹配到
-                    x_list = sorted([last_recs[0], last_recs[6], curr_recs[0], curr_recs[6]])   # 取x轴上的重叠区域
+                    # 取x轴上的重叠区域
+                    x_list = sorted([max(last_recs[0], last_recs[4]), min(last_recs[2], last_recs[6]), max(curr_recs[0], curr_recs[4]), min(curr_recs[2], curr_recs[6])])
                     canny_part_xmin = x_list[1]
                     canny_part_xmax = x_list[2]
                     canny_len = canny_part_xmax - canny_part_xmin
 
-                    y_list = sorted([last_recs[1], last_recs[7], curr_recs[1], curr_recs[7]])   # 取y轴上的重叠区域
+                    # 取y轴上的重叠区域
+                    y_list = sorted([min(last_recs[1], last_recs[3]), max(last_recs[5], last_recs[7]), min(curr_recs[1], curr_recs[3]), max(curr_recs[5], curr_recs[7])])
                     canny_part_ymin = y_list[1]
                     canny_part_ymax = y_list[2]
 
@@ -347,22 +350,21 @@ def voting(origin_recs, frame_result, canny_img2_list, origin_img_height, origin
                     x_max = (canny_part_xmin + canny_part_xmax) // 2 + compute_part_len
 
                     # 转换成相对坐标
-                    related_late_xmin = int(x_min - last_recs[0])
-                    related_late_xmax = int(x_max - last_recs[0])
-                    related_curr_xmin = int(x_min - curr_recs[0])
-                    related_curr_xmax = int(x_max - curr_recs[0])
-                    related_late_ymin = int(canny_part_ymin - last_recs[1])
-                    related_late_ymax = int(canny_part_ymax - last_recs[1])
-                    related_curr_ymin = int(canny_part_ymin - curr_recs[1])
-                    related_curr_ymax = int(canny_part_ymax - curr_recs[1])
+                    related_late_xmin = int(x_min - max(last_recs[0], last_recs[4]))
+                    related_late_xmax = int(x_max - max(last_recs[0], last_recs[4]))
+                    related_curr_xmin = int(x_min - max(curr_recs[0], curr_recs[4]))
+                    related_curr_xmax = int(x_max - max(curr_recs[0], curr_recs[4]))
+                    related_late_ymin = int(canny_part_ymin - min(last_recs[1], last_recs[3]))
+                    related_late_ymax = int(canny_part_ymax - min(last_recs[1], last_recs[3]))
+                    related_curr_ymin = int(canny_part_ymin - min(curr_recs[1], curr_recs[3]))
+                    related_curr_ymax = int(canny_part_ymax - min(curr_recs[1], curr_recs[3]))
 
                     # 计算图片相似度
-                    difference = get_img_difference(
-                        g_canny_img_queue.queue[0][j][related_late_ymin:related_late_ymax,
-                        related_late_xmin:related_late_xmax],
-                        g_canny_img_queue.queue[1][i][related_curr_ymin:related_curr_ymax,
-                        related_curr_xmin:related_curr_xmax],
-                        hash_type="perception")
+                    old_img = g_canny_img_queue.queue[0][j][related_late_ymin:related_late_ymax,
+                                                            related_late_xmin:related_late_xmax]
+                    new_img = g_canny_img_queue.queue[1][i][related_curr_ymin:related_curr_ymax,
+                                                            related_curr_xmin:related_curr_xmax]
+                    difference = get_img_difference(old_img, new_img, hash_type="perception")
 
                     if output_process:
                         g_str_ui += "the difference between" + str(img_no) + "_" + str(i) + "and " + str(img_no - 1) + "_" + str(j) + ":" + str(difference) + "\n"
@@ -370,6 +372,9 @@ def voting(origin_recs, frame_result, canny_img2_list, origin_img_height, origin
                               ":", str(difference))
 
                     if difference >= G_DIFFERENT_THRESHOLD:  # 匹配到，但是计算相似度的结果说明两个字幕不同
+                        # from random import uniform
+                        # cv2.imwrite(os.path.join(output_path, "{}_part_{}.jpg".format(img_no - 1, uniform(0, 1))), old_img)
+                        # cv2.imwrite(os.path.join(output_path, "{}_part_{}.jpg".format(img_no, uniform(0, 1))), new_img)
                         if output_process:
                             g_str_ui += str(img_no) + "_" + str(i) + " different from" + str(img_no - 1) + "_" + str(j) + "\n"
                             print(str(img_no), "_", str(i), " different from", str(img_no - 1), "_", str(j))
